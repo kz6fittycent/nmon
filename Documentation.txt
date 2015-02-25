@@ -1,0 +1,7 @@
+nmon for Linux
+
+For documentation take a look at http://nmon.sourceforge.net
+
+nmon for Linux was an internal project at IBM for many years and was released to open source under GPL Version 3 on 27th July 2009. 
+
+Thanks for your interest - Nigel Griffiths
