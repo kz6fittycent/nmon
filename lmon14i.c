@@ -2128,9 +2128,9 @@ void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, doub
 
 	int	i;
 	int	peak_col;
-    double fixSteal = steal;
-    if ( (steal + idle + user + iowait) != 100.0 )
-        steal = 100.0 - (idle + user + iowait);
+    double fix_steal = steal;
+    if ( (steal + idle + user + iowait + kernel) != 100.0 )
+        steal = 100.0 - (idle + user + iowait + kernel);
 
 	if(show_rrd) return;
 
@@ -2146,7 +2146,7 @@ void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, doub
 		mvwprintw(pad,row,  9, "% 6.1lf", kernel);
 		mvwprintw(pad,row, 15, "% 6.1lf", iowait);
 		mvwprintw(pad,row, 21, "% 6.1lf", idle);
-        mvwprintw(pad,row, 27, "% 6.1lf", fixSteal);
+        mvwprintw(pad,row, 27, "% 6.1lf", fix_steal);
 		mvwprintw(pad,row, 33, "|");
 		wmove(pad,row, 34);
 		for (i = 0; i < (int)(user   / 2); i++){
@@ -2174,22 +2174,22 @@ void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, doub
 		}
 		mvwprintw(pad,row, 77, "|");
 		
-		peak_col = 28 +(int)(cpu_peak[cpu_no]/2);
+		peak_col = 34 +(int)(cpu_peak[cpu_no]/2);
 		if(peak_col > 77)
 			peak_col=77;
 		mvwprintw(pad,row, peak_col, ">");
 	} else {
 	/* Sanity check the numnbers */
-		if( user < 0.0 || kernel < 0.0 || iowait < 0.0 || idle < 0.0 || idle >100.0) {
-			user = kernel = iowait = idle = 0;
+		if( user < 0.0 || kernel < 0.0 || iowait < 0.0 || idle < 0.0 || idle >100.0 || steal < 0) {
+			user = kernel = iowait = idle = steal = 0;
 		}
 		
 		if(cpu_no == 0)
 			fprintf(fp,"CPU_ALL,%s,%.1lf,%.1lf,%.1lf,%.1lf,%.1lf,,%d\n", LOOP,
-			    user, kernel, iowait, idle, fixSteal, cpus);
+			    user, kernel, iowait, idle, fix_steal, cpus);
 		else {
 			fprintf(fp,"CPU%03d,%s,%.1lf,%.1lf,%.1lf,%.1lf,%.1lf\n", cpu_no, LOOP,
-			    user, kernel, iowait, idle, fixSteal);
+			    user, kernel, iowait, idle, fix_steal);
 		}
 	}
 }
