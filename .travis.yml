@@ -1,4 +1,4 @@
 language: c
 compiler:
-    -gcc
+  - gcc
 script: make nmon_x86_ubuntu134
