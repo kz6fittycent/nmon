@@ -2130,7 +2130,7 @@ void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, doub
 	int	peak_col;
     double fix_steal = steal;
     if ( (steal + idle + user + iowait + kernel) != 100.0 )
-        steal = 100.0 - (idle + user + iowait + kernel);
+        fix_steal = 100.0 - (idle + user + iowait + kernel);
 
 	if(show_rrd) return;
 
@@ -3481,10 +3481,10 @@ int main(int argc, char **argv)
 {
 	int secs;
 	int cpu_idle;
-    int cpu_steal;
 	int cpu_user;
 	int cpu_sys;
 	int cpu_wait;
+    int cpu_steal;
 	int	n=0;			/* reusable counters */
 	int	i=0;
 	int	j=0;
