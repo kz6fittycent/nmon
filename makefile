@@ -3,7 +3,7 @@ CFLAGS=-g -O2 -D JFS -D GETUSER -Wall -D LARGEMEM
 # CFLAGS=-g -O2 -D JFS -D GETUSER -Wall -D POWER
 #CFLAGS=-g -D JFS -D GETUSER 
 LDFLAGS=-lncurses -g
-FILE=lmon14i.c
+FILE=lmon15a.c
 
 nmon_power_rhel3: $(FILE)
 	cc -o nmon_power_rhel3 $(FILE) $(CFLAGS) $(LDFLAGS) -D POWER
