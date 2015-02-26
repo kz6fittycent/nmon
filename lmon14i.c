@@ -2125,8 +2125,12 @@ static int firsttime = 1;
 
 void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, double iowait, double idle, double steal)
 {
+
 	int	i;
 	int	peak_col;
+    double fixSteal = steal;
+    if ( (steal + idle + user + iowait) != 100.0 )
+        steal = 100.0 - (idle + user + iowait);
 
 	if(show_rrd) return;
 
@@ -2142,7 +2146,7 @@ void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, doub
 		mvwprintw(pad,row,  9, "% 6.1lf", kernel);
 		mvwprintw(pad,row, 15, "% 6.1lf", iowait);
 		mvwprintw(pad,row, 21, "% 6.1lf", idle);
-        mvwprintw(pad,row, 27, "% 6.1lf", steal);
+        mvwprintw(pad,row, 27, "% 6.1lf", fixSteal);
 		mvwprintw(pad,row, 33, "|");
 		wmove(pad,row, 34);
 		for (i = 0; i < (int)(user   / 2); i++){
@@ -2182,10 +2186,10 @@ void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, doub
 		
 		if(cpu_no == 0)
 			fprintf(fp,"CPU_ALL,%s,%.1lf,%.1lf,%.1lf,%.1lf,%.1lf,,%d\n", LOOP,
-			    user, kernel, iowait, idle, steal, cpus);
+			    user, kernel, iowait, idle, fixSteal, cpus);
 		else {
 			fprintf(fp,"CPU%03d,%s,%.1lf,%.1lf,%.1lf,%.1lf,%.1lf\n", cpu_no, LOOP,
-			    user, kernel, iowait, idle, steal);
+			    user, kernel, iowait, idle, fixSteal);
 		}
 	}
 }
@@ -4494,11 +4498,11 @@ mvwprintw(padcpu,8, 4, "cpuinfo: Hyperthreads  =%d VirtualCPUs =%d", hyperthread
 #endif
 						if(!show_raw)
 							plot_smp(padsmp,i+1, 3 + i,
-							(double)cpu_user / (double)cpu_sum * 100.0,
-							(double)cpu_sys  / (double)cpu_sum * 100.0,
-							(double)cpu_wait / (double)cpu_sum * 100.0,
-							(double)cpu_idle / (double)cpu_sum * 100.0,
-                            (double)cpu_steal / (double)cpu_sum * 100.0);
+							(double)cpu_user * 100.0/ (double)cpu_sum,
+							(double)cpu_sys * 100.0 / (double)cpu_sum,
+							(double)cpu_wait * 100.0/ (double)cpu_sum,
+							(double)cpu_idle * 100.0/ (double)cpu_sum,
+                            (double)cpu_steal * 100.0/ (double)cpu_sum);
 						else
 							save_smp(padsmp,i+1, 3+i,
 							  RAW(user) - RAW(nice),
@@ -4562,19 +4566,19 @@ mvwprintw(padcpu,8, 4, "cpuinfo: Hyperthreads  =%d VirtualCPUs =%d", hyperthread
 					cpu_sum = cpu_idle = 100.0;
 
 				RRD fprintf(fp,"rrdtool update cpu.rrd %s:%.1f:%.1f:%.1f:%.1f\n",LOOP,
-						(double)cpu_user / (double)cpu_sum * 100.0,
-						(double)cpu_sys  / (double)cpu_sum * 100.0,
-						(double)cpu_wait / (double)cpu_sum * 100.0,
-						(double)cpu_idle / (double)cpu_sum * 100.0);
+						(double)cpu_user / (double)cpu_sum,
+						(double)cpu_sys  / (double)cpu_sum,
+						(double)cpu_wait / (double)cpu_sum,
+						(double)cpu_idle / (double)cpu_sum);
 				if (cpus > 1 || !cursed) {
 					if(!smp_first_time || !cursed) {
 						if(!show_raw) {
 							plot_smp(padsmp,0, 4 + i,
-							(double)cpu_user / (double)cpu_sum * 100.0,
-							(double)cpu_sys  / (double)cpu_sum * 100.0,
-							(double)cpu_wait / (double)cpu_sum * 100.0,
-							(double)cpu_idle / (double)cpu_sum * 100.0,
-                            (double)cpu_steal / (double)cpu_sum * 100.0);
+							(double)cpu_user * 100.0 / (double)cpu_sum,
+							(double)cpu_sys * 100.0 / (double)cpu_sum,
+							(double)cpu_wait * 100.0/ (double)cpu_sum,
+							(double)cpu_idle * 100.0/ (double)cpu_sum,
+                            (double)cpu_steal * 100.0/ (double)cpu_sum);
 						} else {
 							save_smp(padsmp,0, 4+i,
 							  RAWTOTAL(user) - RAWTOTAL(nice),
