@@ -2197,11 +2197,14 @@ static int firsttime = 1;
 	}
 }
 
-void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, double iowait, double idle)
+void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, double iowait, double idle, double steal)
 {
 	int	i;
 	int	peak_col;
+	double fix_steal = steal;
 
+	if ( ( user + kernel + iowait + idle + steal ) > 100.0 )
+		fix_steal = 100.0 - ( user + kernel + iowait + idle );
 	if(show_rrd) return;
 
 	if(cpu_peak[cpu_no] < (user + kernel + iowait) )
@@ -2216,8 +2219,9 @@ void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, doub
 		mvwprintw(pad,row,  9, "% 6.1lf", kernel);
 		mvwprintw(pad,row, 15, "% 6.1lf", iowait);
 		mvwprintw(pad,row, 21, "% 6.1lf", idle);
-		mvwprintw(pad,row, 27, "|");
-		wmove(pad,row, 28);
+		mvwprintw(pad,row, 27, "% 6.1lf", fix_steal);
+		mvwprintw(pad,row, 33, "|");
+		wmove(pad,row, 34);
 		for (i = 0; i < (int)(user   / 2); i++){
 			COLOUR wattrset(pad,COLOR_PAIR(9));
 			wprintw(pad,"U");
@@ -2243,22 +2247,22 @@ void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, doub
 		}
 		mvwprintw(pad,row, 77, "|");
 		
-		peak_col = 28 +(int)(cpu_peak[cpu_no]/2);
+		peak_col = 34 +(int)(cpu_peak[cpu_no]/2);
 		if(peak_col > 77)
 			peak_col=77;
 		mvwprintw(pad,row, peak_col, ">");
 	} else {
 	/* Sanity check the numnbers */
-		if( user < 0.0 || kernel < 0.0 || iowait < 0.0 || idle < 0.0 || idle >100.0) {
-			user = kernel = iowait = idle = 0;
+		if( user < 0.0 || kernel < 0.0 || iowait < 0.0 || idle < 0.0 || idle >100.0 || steal < 0 ) {
+			user = kernel = iowait = idle = fix_steal = 0;
 		}
 		
 		if(cpu_no == 0)
-			fprintf(fp,"CPU_ALL,%s,%.1lf,%.1lf,%.1lf,%.1lf,,%d\n", LOOP,
-			    user, kernel, iowait, idle,cpus);
+			fprintf(fp,"CPU_ALL,%s,%.1lf,%.1lf,%.1lf,%.1lf,%.1lf,,%d\n", LOOP,
+			    user, kernel, iowait, idle, fix_steal, cpus);
 		else {
-			fprintf(fp,"CPU%03d,%s,%.1lf,%.1lf,%.1lf,%.1lf\n", cpu_no, LOOP,
-			    user, kernel, iowait, idle);
+			fprintf(fp,"CPU%03d,%s,%.1lf,%.1lf,%.1lf,%.1lf,%.1lf\n", cpu_no, LOOP,
+			    user, kernel, iowait, idle, fix_steal);
 		}
 	}
 }
@@ -3555,6 +3559,7 @@ int main(int argc, char **argv)
 	int cpu_user;
 	int cpu_sys;
 	int cpu_wait;
+	int cpu_steal;
 	int	n=0;			/* reusable counters */
 	int	i=0;
 	int	j=0;
@@ -4085,8 +4090,8 @@ printf("TIMESTAMP=%d.\n",time_stamp_type);
 		fflush(NULL);
 
 		for (i = 1; i <= cpus; i++)
-			fprintf(fp,"CPU%03d,CPU %d %s,User%%,Sys%%,Wait%%,Idle%%\n", i, i, run_name);
-		fprintf(fp,"CPU_ALL,CPU Total %s,User%%,Sys%%,Wait%%,Idle%%,Busy,CPUs\n", run_name);
+			fprintf(fp,"CPU%03d,CPU %d %s,User%%,Sys%%,Wait%%,Idle%%,Steal%%\n", i, i, run_name);
+		fprintf(fp,"CPU_ALL,CPU Total %s,User%%,Sys%%,Wait%%,Idle%%,Steal%%,Busy,CPUs\n", run_name);
 		fprintf(fp,"MEM,Memory MB %s,memtotal,hightotal,lowtotal,swaptotal,memfree,highfree,lowfree,swapfree,memshared,cached,active,bigfree,buffers,swapcached,inactive\n", run_name);
 
 #ifdef POWER
@@ -4598,7 +4603,8 @@ mvwprintw(padcpu,8, 4, "cpuinfo: Hyperthreads  =%d VirtualCPUs =%d", hyperthread
 					cpu_sys  = p->cpuN[i].sys  - q->cpuN[i].sys;
 					cpu_wait = p->cpuN[i].wait - q->cpuN[i].wait;
 					cpu_idle = p->cpuN[i].idle - q->cpuN[i].idle;
-					cpu_sum = cpu_idle + cpu_user + cpu_sys + cpu_wait;
+					cpu_steal = p->cpuN[i].steal - q->cpuN[i].steal;
+					cpu_sum = cpu_idle + cpu_user + cpu_sys + cpu_wait + cpu_steal;
 					/* Check if we had a CPU # change and have to set idle to 100 */
 					if( cpu_sum == 0)
 						cpu_sum = cpu_idle = 100.0;
@@ -4621,7 +4627,8 @@ mvwprintw(padcpu,8, 4, "cpuinfo: Hyperthreads  =%d VirtualCPUs =%d", hyperthread
 							(double)cpu_user / (double)cpu_sum * 100.0,
 							(double)cpu_sys  / (double)cpu_sum * 100.0,
 							(double)cpu_wait / (double)cpu_sum * 100.0,
-							(double)cpu_idle / (double)cpu_sum * 100.0);
+							(double)cpu_idle / (double)cpu_sum * 100.0,
+							(double)cpu_steal / (double)cpu_sum * 100.0);
 						else
 							save_smp(padsmp,i+1, 3+i,
 							  RAW(user) - RAW(nice),
@@ -4679,7 +4686,8 @@ mvwprintw(padcpu,8, 4, "cpuinfo: Hyperthreads  =%d VirtualCPUs =%d", hyperthread
 				cpu_sys  = p->cpu_total.sys  - q->cpu_total.sys;
 				cpu_wait = p->cpu_total.wait - q->cpu_total.wait;
 				cpu_idle = p->cpu_total.idle - q->cpu_total.idle;
-				cpu_sum = cpu_idle + cpu_user + cpu_sys + cpu_wait;
+				cpu_steal = p->cpu_total.steal - q->cpu_total.steal;
+				cpu_sum = cpu_idle + cpu_user + cpu_sys + cpu_wait + cpu_steal;
 
 				/* Check if we had a CPU # change and have to set idle to 100 */
 				if( cpu_sum == 0)
@@ -4697,7 +4705,8 @@ mvwprintw(padcpu,8, 4, "cpuinfo: Hyperthreads  =%d VirtualCPUs =%d", hyperthread
 							(double)cpu_user / (double)cpu_sum * 100.0,
 							(double)cpu_sys  / (double)cpu_sum * 100.0,
 							(double)cpu_wait / (double)cpu_sum * 100.0,
-							(double)cpu_idle / (double)cpu_sum * 100.0);
+							(double)cpu_idle / (double)cpu_sum * 100.0,
+							(double)cpu_steal / (double)cpu_sum * 100.0);
 						} else {
 							save_smp(padsmp,0, 4+i,
 							  RAWTOTAL(user) - RAWTOTAL(nice),
