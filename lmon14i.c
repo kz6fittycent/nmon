@@ -2129,13 +2129,15 @@ void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, doub
 	int	i;
 	int	peak_col;
     double fix_steal = steal;
-    if ( (steal + idle + user + iowait + kernel) != 100.0 )
+    if ( (steal + idle + user + iowait + kernel) > 100.0 )
         fix_steal = 100.0 - (idle + user + iowait + kernel);
+    if ( fix_steal < 0.0 )
+        fix_steal = 0;
 
 	if(show_rrd) return;
 
-	if(cpu_peak[cpu_no] < (user + kernel + iowait) )
-		cpu_peak[cpu_no] = (double)((int)user/2 + (int)kernel/2 + (int)iowait/2)*2.0;
+	if(cpu_peak[cpu_no] < (user + kernel + iowait + fix_steal ) )
+		cpu_peak[cpu_no] = (double)((int)user/2 + (int)kernel/2 + (int)iowait/2 + (int)fix_steal )*2.0;
 
 	if (cursed) {
 		if(cpu_no == 0)
@@ -2146,9 +2148,8 @@ void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, doub
 		mvwprintw(pad,row,  9, "% 6.1lf", kernel);
 		mvwprintw(pad,row, 15, "% 6.1lf", iowait);
 		mvwprintw(pad,row, 21, "% 6.1lf", idle);
-        mvwprintw(pad,row, 27, "% 6.1lf", fix_steal);
-		mvwprintw(pad,row, 33, "|");
-		wmove(pad,row, 34);
+		mvwprintw(pad,row, 27, "|");
+		wmove(pad,row, 28);
 		for (i = 0; i < (int)(user   / 2); i++){
 			COLOUR wattrset(pad,COLOR_PAIR(9));
 			wprintw(pad,"U");
@@ -2174,22 +2175,22 @@ void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, doub
 		}
 		mvwprintw(pad,row, 77, "|");
 		
-		peak_col = 34 +(int)(cpu_peak[cpu_no]/2);
+		peak_col = 28 +(int)(cpu_peak[cpu_no]/2);
 		if(peak_col > 77)
 			peak_col=77;
 		mvwprintw(pad,row, peak_col, ">");
 	} else {
 	/* Sanity check the numnbers */
 		if( user < 0.0 || kernel < 0.0 || iowait < 0.0 || idle < 0.0 || idle >100.0 || steal < 0) {
-			user = kernel = iowait = idle = steal = 0;
+			user = kernel = iowait = idle = fix_steal = 0;
 		}
 		
 		if(cpu_no == 0)
 			fprintf(fp,"CPU_ALL,%s,%.1lf,%.1lf,%.1lf,%.1lf,%.1lf,,%d\n", LOOP,
-			    user, kernel, iowait, idle, fix_steal, cpus);
+			    user, kernel, iowait, fix_steal, idle, cpus);
 		else {
 			fprintf(fp,"CPU%03d,%s,%.1lf,%.1lf,%.1lf,%.1lf,%.1lf\n", cpu_no, LOOP,
-			    user, kernel, iowait, idle, fix_steal);
+			    user, kernel, iowait, fix_steal, idle);
 		}
 	}
 }
@@ -4014,8 +4015,8 @@ printf("TIMESTAMP=%d.\n",time_stamp_type);
 		fflush(NULL);
 
 		for (i = 1; i <= cpus; i++)
-			fprintf(fp,"CPU%03d,CPU %d %s,User%%,Sys%%,Wait%%,Idle%%,Steal%%\n", i, i, run_name);
-		fprintf(fp,"CPU_ALL,CPU Total %s,User%%,Sys%%,Wait%%,Idle%%,Steal%%,Busy,CPUs\n", run_name);
+			fprintf(fp,"CPU%03d,CPU %d %s,User%%,Sys%%,Wait%%,Steal%%,Idle%%\n", i, i, run_name);
+		fprintf(fp,"CPU_ALL,CPU Total %s,User%%,Sys%%,Wait%%,Steal%%,Idle%%,Busy,CPUs\n", run_name);
 		fprintf(fp,"MEM,Memory MB %s,memtotal,hightotal,lowtotal,swaptotal,memfree,highfree,lowfree,swapfree,memshared,cached,active,bigfree,buffers,swapcached,inactive\n", run_name);
 
 #ifdef POWER
