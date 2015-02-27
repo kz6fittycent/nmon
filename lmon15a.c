@@ -2047,6 +2047,7 @@ struct {
 	double kernel;
 	double iowait;
 	double idle;
+	double steal;
 } cpu_snap[MAX_SNAPS];
 
 int snap_average()
@@ -2073,6 +2074,7 @@ int i;
 		cpu_snap[i].user = 0;
 		cpu_snap[i].kernel = 0;
 		cpu_snap[i].iowait = 0;
+		cpu_snap[i].steal = 0;
 		cpu_snap[i].idle = 0;
 	}
 	next_cpu_snap=0;
@@ -2107,19 +2109,23 @@ int j;
 		mvwprintw(pad,20, 1," 5%%-|");
 
  		if (colour){
- 			mvwprintw(pad,21, 4, " +--------------------");
+ 			mvwprintw(pad,21, 4, "+-----------");
  			COLOUR wattrset(pad, COLOR_PAIR(2));
- 			mvwprintw(pad,21, 26, "User%%");
+ 			mvwprintw(pad,21, 16, "User%%");
  			COLOUR wattrset(pad, COLOR_PAIR(0));
- 			mvwprintw(pad,21, 30, "---------");
+ 			mvwprintw(pad,21, 20, "-----------");
  			COLOUR wattrset(pad, COLOR_PAIR(1));
- 			mvwprintw(pad,21, 39, "System%%");
+ 			mvwprintw(pad,21, 31, "System%%");
  			COLOUR wattrset(pad, COLOR_PAIR(0));
- 			mvwprintw(pad,21, 45, "---------");
+ 			mvwprintw(pad,21, 37, "-----------");
  			COLOUR wattrset(pad, COLOR_PAIR(4));
- 			mvwprintw(pad,21, 54, "Wait%%");
+ 			mvwprintw(pad,21, 48, "Wait%%");
  			COLOUR wattrset(pad, COLOR_PAIR(0));
- 			mvwprintw(pad,21, 58, "---------------------+");
+ 			mvwprintw(pad,21, 52, "-----------");
+ 			COLOUR wattrset(pad, COLOR_PAIR(5));
+ 			mvwprintw(pad,21, 62, "Steal%%");
+ 			 COLOUR wattrset(pad, COLOR_PAIR(0));
+ 			mvwprintw(pad,21, 67, "------------+");
 		} else {
 			mvwprintw(pad,21, 4, " +-------------------------------------------------------------------------+");
 		}
@@ -2139,7 +2145,11 @@ int j;
 					COLOUR wattrset(pad,COLOR_PAIR(10));
 					wprintw(pad,"w");
 					COLOUR wattrset(pad,COLOR_PAIR(0));
-				} else 
+				} else if ( (cpu_snap[j].user + cpu_snap[j].kernel + cpu_snap[j].iowait + cpu_snap[j].steal )/ 100 * MAX_SNAP_ROWS > i+0.5) {
+					COLOUR wattrset(pad,COLOR_PAIR(13));
+					wprintw(pad,"T");
+					COLOUR wattrset(pad,COLOR_PAIR(0));
+				}else 
 					wprintw(pad," ");
 			}
 		}
@@ -2160,12 +2170,13 @@ int j;
 }
 
 /* This saves the CPU overall usage for later ploting on the screen */
-void plot_save(double user, double kernel, double iowait, double idle)
+void plot_save(double user, double kernel, double iowait, double idle, double steal)
 {
 	cpu_snap[next_cpu_snap].user = user;
 	cpu_snap[next_cpu_snap].kernel = kernel;
 	cpu_snap[next_cpu_snap].iowait = iowait;
 	cpu_snap[next_cpu_snap].idle = idle;
+	cpu_snap[next_cpu_snap].steal = steal;
 	next_cpu_snap++;
 	if(next_cpu_snap >= MAX_SNAPS) {
 		next_cpu_snap=0;
@@ -2205,10 +2216,13 @@ void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, doub
 
 	if ( ( user + kernel + iowait + idle + steal ) > 100.0 )
 		fix_steal = 100.0 - ( user + kernel + iowait + idle );
+	if ( fix_steal < 0)
+		fix_steal = 0;
+
 	if(show_rrd) return;
 
-	if(cpu_peak[cpu_no] < (user + kernel + iowait) )
-		cpu_peak[cpu_no] = (double)((int)user/2 + (int)kernel/2 + (int)iowait/2)*2.0;
+	if(cpu_peak[cpu_no] < (user + kernel + iowait + fix_steal) )
+		cpu_peak[cpu_no] = (double)((int)user/2 + (int)kernel/2 + (int)iowait/2 + (int)fix_steal/2)*2.0;
 
 	if (cursed) {
 		if(cpu_no == 0)
@@ -2218,8 +2232,9 @@ void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, doub
 		mvwprintw(pad,row,  3, "% 6.1lf", user);
 		mvwprintw(pad,row,  9, "% 6.1lf", kernel);
 		mvwprintw(pad,row, 15, "% 6.1lf", iowait);
-		mvwprintw(pad,row, 21, "% 6.1lf", idle);
-		mvwprintw(pad,row, 27, "% 6.1lf", fix_steal);
+		mvwprintw(pad,row, 21, "% 6.1lf", fix_steal);
+		mvwprintw(pad,row, 27, "% 6.1lf", idle);
+
 		mvwprintw(pad,row, 33, "|");
 		wmove(pad,row, 34);
 		for (i = 0; i < (int)(user   / 2); i++){
@@ -2232,9 +2247,15 @@ void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, doub
 			wprintw(pad,"s");
 			COLOUR wattrset(pad,COLOR_PAIR(0));
 		}
+
 		for (i = 0; i < (int)(iowait / 2); i++) {
 			COLOUR wattrset(pad,COLOR_PAIR(10));
 			wprintw(pad,"W");
+			COLOUR wattrset(pad,COLOR_PAIR(0));
+		}
+		for(i = 0; i < (int)(fix_steal / 2); i++){
+			COLOUR wattrset(pad,COLOR_PAIR(13));
+			wprintw(pad,"T");
 			COLOUR wattrset(pad,COLOR_PAIR(0));
 		}
 		for (i = 0; i < (int)(idle   / 2); i++) {
@@ -2245,11 +2266,11 @@ void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, doub
 #endif
 				wprintw(pad," ");
 		}
-		mvwprintw(pad,row, 77, "|");
+		mvwprintw(pad,row, 83, "|");
 		
 		peak_col = 34 +(int)(cpu_peak[cpu_no]/2);
-		if(peak_col > 77)
-			peak_col=77;
+		if(peak_col > 83)
+			peak_col=83;
 		mvwprintw(pad,row, peak_col, ">");
 	} else {
 	/* Sanity check the numnbers */
@@ -2259,10 +2280,10 @@ void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, doub
 		
 		if(cpu_no == 0)
 			fprintf(fp,"CPU_ALL,%s,%.1lf,%.1lf,%.1lf,%.1lf,%.1lf,,%d\n", LOOP,
-			    user, kernel, iowait, idle, fix_steal, cpus);
+			    user, kernel, iowait, fix_steal, idle, cpus);
 		else {
 			fprintf(fp,"CPU%03d,%s,%.1lf,%.1lf,%.1lf,%.1lf,%.1lf\n", cpu_no, LOOP,
-			    user, kernel, iowait, idle, fix_steal);
+			    user, kernel, iowait, fix_steal, idle);
 		}
 	}
 }
@@ -2291,6 +2312,7 @@ void init_pairs()
 	COLOUR init_pair((short)10,(short)0,(short)4); /* Blue background, blue text */
 	COLOUR init_pair((short)11,(short)0,(short)3); /* Yellow background, yellow text */
 	COLOUR init_pair((short)12,(short)0,(short)6); /* Cyan background, cyan text */
+	COLOUR init_pair((short)13,(short)0,(short)5); /* Purple background, black text */
 }
 
 /* Signal handler 
@@ -3470,7 +3492,7 @@ int count =0;
 }
 /* --- */
 
-char cpu_line[] = "---------------------------+-------------------------------------------------+";
+char cpu_line[] = "---------------------------------+-------------------------------------------------+";
 /* Start process as specified in cmd in a child process without waiting
  * for completion
  * not sure if want to prevent this funcitonality for root user
@@ -4090,8 +4112,8 @@ printf("TIMESTAMP=%d.\n",time_stamp_type);
 		fflush(NULL);
 
 		for (i = 1; i <= cpus; i++)
-			fprintf(fp,"CPU%03d,CPU %d %s,User%%,Sys%%,Wait%%,Idle%%,Steal%%\n", i, i, run_name);
-		fprintf(fp,"CPU_ALL,CPU Total %s,User%%,Sys%%,Wait%%,Idle%%,Steal%%,Busy,CPUs\n", run_name);
+			fprintf(fp,"CPU%03d,CPU %d %s,User%%,Sys%%,Wait%%,Steal%%,Idle%%\n", i, i, run_name);
+		fprintf(fp,"CPU_ALL,CPU Total %s,User%%,Sys%%,Wait%%,Steal%%,Idle%%,Busy,CPUs\n", run_name);
 		fprintf(fp,"MEM,Memory MB %s,memtotal,hightotal,lowtotal,swaptotal,memfree,highfree,lowfree,swapfree,memshared,cached,active,bigfree,buffers,swapcached,inactive\n", run_name);
 
 #ifdef POWER
@@ -4512,13 +4534,15 @@ mvwprintw(padcpu,8, 4, "cpuinfo: Hyperthreads  =%d VirtualCPUs =%d", hyperthread
 				cpu_sys  = p->cpu_total.sys  - q->cpu_total.sys; 
 				cpu_wait = p->cpu_total.wait - q->cpu_total.wait; 
 				cpu_idle = p->cpu_total.idle - q->cpu_total.idle; 
-				cpu_sum = cpu_idle + cpu_user + cpu_sys + cpu_wait;
+				cpu_steal = p->cpu_total.steal - q->cpu_total.steal;
+				cpu_sum = cpu_idle + cpu_user + cpu_sys + cpu_wait + cpu_steal;
 
 				plot_save(
 				    (double)cpu_user / (double)cpu_sum * 100.0,
 				    (double)cpu_sys  / (double)cpu_sum * 100.0,
 				    (double)cpu_wait / (double)cpu_sum * 100.0,
-				    (double)cpu_idle / (double)cpu_sum * 100.0);
+				    (double)cpu_idle / (double)cpu_sum * 100.0,
+				    (double)cpu_steal / (double)cpu_sum * 100.0);
 				plot_snap(padlong);
 				DISPLAY(padlong,MAX_SNAP_ROWS+2);
 		}
@@ -4562,8 +4586,10 @@ mvwprintw(padcpu,8, 4, "cpuinfo: Hyperthreads  =%d VirtualCPUs =%d", hyperthread
 					mvwprintw(padsmp,2, 10, "  Sys%%");
 					COLOUR wattrset(padsmp, COLOR_PAIR(4));
 					mvwprintw(padsmp,2, 16, " Wait%%");
+					COLOUR wattrset(padsmp, COLOR_PAIR(5));
+					mvwprintw(padsmp,2, 22, " Steal");
 					COLOUR wattrset(padsmp, COLOR_PAIR(0));
-					mvwprintw(padsmp,2, 22, " Idle|0          |25         |50          |75       100|");
+					mvwprintw(padsmp,2, 28, " Idle|0          |25         |50          |75       100|");
 
 				}	/* if (show_smp) AND if(cursed) */
 				proc_read(P_STAT);
@@ -4610,16 +4636,16 @@ mvwprintw(padcpu,8, 4, "cpuinfo: Hyperthreads  =%d VirtualCPUs =%d", hyperthread
 						cpu_sum = cpu_idle = 100.0;
 					if(smp_first_time && cursed) {
 						if(i == 0) 
-							mvwprintw(padsmp,3 + i, 27, "| Please wait gathering CPU statistics");
+							mvwprintw(padsmp,3 + i, 33, "| Please wait gathering CPU statistics");
 						else
-							mvwprintw(padsmp,3 + i, 27, "|");
-						mvwprintw(padsmp,3 + i, 77, "|");
+							mvwprintw(padsmp,3 + i, 33, "|");
+						mvwprintw(padsmp,3 + i, 83, "|");
 					} else {
 #ifdef POWER
 						/* lparcfg gathered above */
 						if( lparcfg.smt_mode > 1 &&  i % lparcfg.smt_mode == 0) {
-							mvwprintw(padsmp,3 + i, 27, "*");
-							mvwprintw(padsmp,3 + i, 77, "*"); 
+							mvwprintw(padsmp,3 + i, 33, "*");
+							mvwprintw(padsmp,3 + i, 83, "*"); 
 						}
 #endif
 						if(!show_raw)
