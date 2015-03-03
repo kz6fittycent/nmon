@@ -2280,10 +2280,10 @@ void plot_smp(WINDOW *pad, int cpu_no, int row, double user, double kernel, doub
 		
 		if(cpu_no == 0)
 			fprintf(fp,"CPU_ALL,%s,%.1lf,%.1lf,%.1lf,%.1lf,%.1lf,,%d\n", LOOP,
-			    user, kernel, iowait, fix_steal, idle, cpus);
+			    user, kernel, iowait, idle, fix_steal, cpus);
 		else {
 			fprintf(fp,"CPU%03d,%s,%.1lf,%.1lf,%.1lf,%.1lf,%.1lf\n", cpu_no, LOOP,
-			    user, kernel, iowait, fix_steal, idle);
+			    user, kernel, iowait, idle, fix_steal);
 		}
 	}
 }
@@ -4112,8 +4112,8 @@ printf("TIMESTAMP=%d.\n",time_stamp_type);
 		fflush(NULL);
 
 		for (i = 1; i <= cpus; i++)
-			fprintf(fp,"CPU%03d,CPU %d %s,User%%,Sys%%,Wait%%,Steal%%,Idle%%\n", i, i, run_name);
-		fprintf(fp,"CPU_ALL,CPU Total %s,User%%,Sys%%,Wait%%,Steal%%,Idle%%,Busy,CPUs\n", run_name);
+			fprintf(fp,"CPU%03d,CPU %d %s,User%%,Sys%%,Wait%%,Idle%%,Steal%%\n", i, i, run_name);
+		fprintf(fp,"CPU_ALL,CPU Total %s,User%%,Sys%%,Wait%%,Idle%%,Steal%%,Busy,CPUs\n", run_name);
 		fprintf(fp,"MEM,Memory MB %s,memtotal,hightotal,lowtotal,swaptotal,memfree,highfree,lowfree,swapfree,memshared,cached,active,bigfree,buffers,swapcached,inactive\n", run_name);
 
 #ifdef POWER
