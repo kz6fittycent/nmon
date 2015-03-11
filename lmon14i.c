@@ -1973,7 +1973,7 @@ struct {
 	double kernel;
 	double iowait;
 	double idle;
-    double steal;
+	double steal;
 } cpu_snap[MAX_SNAPS];
 
 int snap_average()
@@ -2001,7 +2001,7 @@ int i;
 		cpu_snap[i].kernel = 0;
 		cpu_snap[i].iowait = 0;
 		cpu_snap[i].idle = 0;
-        cpu_snap[i].steal = 0;
+		cpu_snap[i].steal = 0;
 	}
 	next_cpu_snap=0;
 	cpu_snap_all=0;
