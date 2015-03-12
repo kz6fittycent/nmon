@@ -4200,6 +4200,28 @@ printf("TIMESTAMP=%d.\n",time_stamp_type);
 			fprintf(fp,",%s", jfs[k].name); 
 		}
 		fprintf(fp,"\n");
+		fprintf(fp,"JFSFILEUSED,JFS Filespace Mb Used %s", hostname);
+		for (k = 0; k < jfses; k++) {
+  		    if(jfs[k].mounted && strncmp(jfs[k].name,"/proc",5)
+  		    			&& strncmp(jfs[k].name,"/sys",4)
+  		    			&& strncmp(jfs[k].name,"/dev/pts",8)
+					&& strncmp(jfs[k].name,"/dev/shm",8)
+					&& strncmp(jfs[k].name,"/var/lib/nfs/rpc",16)
+			)  /* /proc gives invalid/insane values */
+			fprintf(fp,",%s", jfs[k].name); 
+		}
+		fprintf(fp,"\n");
+		fprintf(fp,"JFSFILETOTAL,JFS Filespace Mb Total %s", hostname);
+		for (k = 0; k < jfses; k++) {
+  		    if(jfs[k].mounted && strncmp(jfs[k].name,"/proc",5)
+  		    			&& strncmp(jfs[k].name,"/sys",4)
+  		    			&& strncmp(jfs[k].name,"/dev/pts",8)
+					&& strncmp(jfs[k].name,"/dev/shm",8)
+					&& strncmp(jfs[k].name,"/var/lib/nfs/rpc",16)
+			)  /* /proc gives invalid/insane values */
+			fprintf(fp,",%s", jfs[k].name); 
+		}
+		fprintf(fp,"\n");
 		jfs_load(UNLOAD);
 #ifdef POWER
 		if( proc_lparcfg() && lparcfg.shared_processor_mode != 0 && power_vm_type == VM_POWERVM) {
@@ -5647,6 +5669,48 @@ fprintf(fp,"VM,Paging and Virtual Memory,nr_dirty,nr_writeback,nr_unstable,nr_pa
 				    }
 				    else
 					fprintf(fp, show_rrd? ":U" : ",0.0");
+				}
+			}
+			fprintf(fp, "\n");
+
+
+			fprintf(fp,show_rrd ? "rrdtool update jfsfile.rrd %s" : "JFSFILEUSED,%s", LOOP);
+			for (k = 0; k < jfses; k++) {
+			    if(jfs[k].mounted && strncmp(jfs[k].name,"/proc",5)
+						&& strncmp(jfs[k].name,"/sys",4)
+						&& strncmp(jfs[k].name,"/dev/pts",8)
+						&& strncmp(jfs[k].name,"/dev/shm",8)
+						&& strncmp(jfs[k].name,"/var/lib/nfs/rpc",16)
+				) { /* /proc gives invalid/insane values */
+					if(fstatfs( jfs[k].fd, &statfs_buffer) != -1) {
+					if(statfs_buffer.f_bsize == 0) 
+						fs_bsize = 4.0 * 1024.0;
+					else
+						fs_bsize = statfs_buffer.f_bsize;
+					    fprintf(fp, show_rrd ? ":%.1f" : ",%.1f",
+					        ((float)statfs_buffer.f_blocks - (float)statfs_buffer.f_bfree) * fs_bsize / 1024 / 1024 );
+				    } else
+					    fprintf(fp, show_rrd? ":U" : ",0.0");
+				}
+			}
+			fprintf(fp, "\n");
+			fprintf(fp,show_rrd ? "rrdtool update jfsfile.rrd %s" : "JFSFILETOTAL,%s", LOOP);
+			for (k = 0; k < jfses; k++) {
+			    if(jfs[k].mounted && strncmp(jfs[k].name,"/proc",5)
+						&& strncmp(jfs[k].name,"/sys",4)
+						&& strncmp(jfs[k].name,"/dev/pts",8)
+						&& strncmp(jfs[k].name,"/dev/shm",8)
+						&& strncmp(jfs[k].name,"/var/lib/nfs/rpc",16)
+				) { /* /proc gives invalid/insane values */
+					if(fstatfs( jfs[k].fd, &statfs_buffer) != -1) {
+					if(statfs_buffer.f_bsize == 0) 
+						fs_bsize = 4.0 * 1024.0;
+					else
+						fs_bsize = statfs_buffer.f_bsize;
+					    fprintf(fp, show_rrd ? ":%.1f" : ",%.1f",
+					        (float)statfs_buffer.f_blocks * fs_bsize / 1024 / 1024 );
+				    } else
+					    fprintf(fp, show_rrd? ":U" : ",0.0");
 				}
 			}
 			fprintf(fp, "\n");
