@@ -12,15 +12,26 @@ This fork displays steal time in both console (interactive) and file mode which 
 
 ![CPU steal time, collected with nmon](https://www.axibase.com/images/nmon_stolen_cpu.png)
 
-# Build
+# Install
+Download the latest version using git clone command or download an [nmon release](https://github.com/axibase/nmon/releases) from the site or Github.
+
+Run the build.sh script.
+
+This script helps run all the processes needed to compile nmon: it runs ./bootstrap (only once, when you first check out the code), followed by ./configure and make. The output of the build process is put into the current directory.
 
 ```bash
-make nmon_x86_ubuntu134
-```
-or
-
-```bash
+git clone git://github.com/axibase/nmon.git
+cd nmon
 ./build.sh
 ```
+If compilation was successful, you should have an nmon file in the current directory.
 
+You can now execute command-line tool by invoking ./nmon. 
+
+# Unistall
+Just remove nmon binary file:
+
+```bash
+rm nmon
+```
 [![Build Status](https://travis-ci.org/axibase/nmon.svg)](https://travis-ci.org/axibase/nmon)
