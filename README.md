@@ -14,6 +14,13 @@ This fork displays steal time in both console (interactive) and file mode which 
 
 # Build
 
-    make nmon_x86_ubuntu134
+```bash
+make nmon_x86_ubuntu134
+```
+or
+
+```bash
+./build.sh
+```
 
 [![Build Status](https://travis-ci.org/axibase/nmon.svg)](https://travis-ci.org/axibase/nmon)
