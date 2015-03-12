@@ -15,7 +15,7 @@ This fork displays steal time in both console (interactive) and file mode which 
 # Build
 
 ```bash
-    make nmon_x86_ubuntu134
+make nmon_x86_ubuntu134
 ```
 or
 
