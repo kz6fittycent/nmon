@@ -42,64 +42,63 @@ nmon_mainframe_sles9: $(FILE)
 nmon_mainframe_sles10: $(FILE)
 	cc -o nmon_mainframe_sles10 $(FILE) $(CFLAGS) $(LDFLAGS) -D MAINFRAME
 
-nmon_x86_sles8:  $(FILE)
+nmon_x86_sles8: $(FILE)
 	cc -o nmon_x86_sles8 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_sles10:  $(FILE)
+nmon_x86_sles10: $(FILE)
 	cc -o nmon_x86_sles10 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_opensuse10:  $(FILE)
+nmon_x86_opensuse10: $(FILE)
 	cc -o nmon_x86_opensuse10 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_64_opensuse11:  $(FILE)
+nmon_x86_64_opensuse11: $(FILE)
 	cc -o nmon_x86_64_opensuse11 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_sles9:  $(FILE)
+nmon_x86_sles9: $(FILE)
 	cc -o nmon_x86_sles9 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_rhel45:  $(FILE)
+nmon_x86_rhel45: $(FILE)
 	cc -o nmon_x86_rhel45 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_rhel52:  $(FILE)
+nmon_x86_rhel52: $(FILE)
 	cc -o nmon_x86_rhel52 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_rhel54:  $(FILE)
+nmon_x86_rhel54: $(FILE)
 	gcc44 -o nmon_x86_rhel54 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_rhel3:  $(FILE)
-nmon_x86_rhel4:  $(FILE)
+nmon_x86_rhel3: $(FILE)
+nmon_x86_rhel4: $(FILE)
 	cc -o nmon_x86_rhel4 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_rhel3:  $(FILE)
+nmon_x86_rhel3: $(FILE)
 	cc -o nmon_x86_rhel3 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_redhat9:  $(FILE)
+nmon_x86_redhat9: $(FILE)
 	cc -o nmon_x86_redhat9 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_rhel2:
+nmon_x86_rhel2: $(FILE)
 	cc -o nmon_x86_rhel2 $(FILE) $(CFLAGS) $(LDFLAGS) -D REREAD=1 -D X86
 
-nmon_x86_debian3:  $(FILE)
+nmon_x86_debian3: $(FILE)
 	cc -o nmon_x86_debian3 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_fedora10: 
+nmon_x86_fedora10: $(FILE) 
 	cc -s -o nmon_x86_fedora10 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_64_fedora10: 
+nmon_x86_64_fedora10: $(FILE) 
 	cc -s -o nmon_x86_64_fedora10 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_ubuntu810: 
+nmon_x86_ubuntu810: $(FILE) 
 	cc -o nmon_x86_ubuntu810 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_64_ubuntu810: 
+nmon_x86_64_ubuntu810: $(FILE) 
 	cc -o nmon_x86_64_ubuntu810 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_64_ubuntu910: 
+nmon_x86_64_ubuntu910: $(FILE) 
 	cc -o nmon_x86_64_ubuntu910 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_ubuntu910: 
+nmon_x86_ubuntu910: $(FILE) 
 	cc -o nmon_x86_ubuntu910 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_ubuntu134: 
+nmon_x86_ubuntu134: $(FILE)
 	cc -o nmon_x86_ubuntu134 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
-
