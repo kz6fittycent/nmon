@@ -13,20 +13,30 @@ This fork displays steal time in both console (interactive) and file mode which 
 ![CPU steal time, collected with nmon](https://www.axibase.com/images/nmon_stolen_cpu.png)
 
 # Install
-Download the latest version using git clone command or download an [nmon release](https://github.com/axibase/nmon/releases) from the site or Github.
-
-Run the build.sh script.
-
-This script helps run all the processes needed to compile nmon: it runs ./bootstrap (only once, when you first check out the code), followed by ./configure and make. The output of the build process is put into the current directory.
+Download the latest version using git clone command:
 
 ```bash
 git clone git://github.com/axibase/nmon.git
+```
+
+Or download an [nmon release](https://github.com/axibase/nmon/releases) from the site or Github.
+
+To download a specific branch use the following command:
+
+```bash
+git clone git://github.com/axibase/nmon.git -b 15e
+```
+
+After this, you should enter the nmon sources directory and execute build.sh script to compile nmon ( on Debian, Ubuntu, Red Hat or Cent OS distributive ), or use 'make' utility to compile nmon from sources.
+
+```bash
 cd nmon
 ./build.sh
 ```
+
 If compilation was successful, you should have an nmon file in the current directory.
 
-You can now execute command-line tool by invoking ./nmon. 
+You can now execute command-line tool by invoking ./nmon_{yourDistributive}. 
 
 # Unistall
 Just remove nmon binary file:
