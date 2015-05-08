@@ -1,11 +1,32 @@
 #!/bin/sh
-CFLAGS="-g -O2 -D JFS -D GETUSER -Wall -D LARGEMEM"
-LDFLAGS="-lncurses -g"
-COMPILER="gcc"
-FILE="lmon15a.c"
-if [ `which $COMPILER` ]; then
-    $COMPILER -o nmon $FILE $CFLAGS $LDFLAGS -D X86
-else
-    echo "Please install gnu linux compiler or fix COMPILE variable for your system in the build script"
+distr=""
+release="`cat /etc/*-release`"
+if `echo $release | grep -qi "CentOS"`; then
+    distr="centos"
+elif `echo $release | grep -qi "Red Hat"`; then
+    distr="redhat"
+elif `echo $release | grep -qi "Ubuntu"`; then
+    distr="ubuntu"
+elif `echo $release | grep -qi "Debian"`; then
+    distr="debian"
 fi
+
+case "$distr" in
+    "centos" | "redhat" )
+        make nmon_x86_rhel4
+        ;;
+    "debian" )
+        make nmon_x86_debian3
+        ;;
+    "ubuntu" )
+        make nmon_x86_ubuntu134
+        ;;
+    * )
+        echo "Your operation system is not supported by build script. Please look makefile to build nmon for your operation system."
+        exit 1
+        ;;
+esac
+exit 0
+        
+
 
