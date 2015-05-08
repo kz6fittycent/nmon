@@ -23,7 +23,7 @@ nmon: lnmon.o
 #define RAW(member)      (long)((long)(p->cpuN[i].member)   - (long)(q->cpuN[i].member))
 #define RAWTOTAL(member) (long)((long)(p->cpu_total.member) - (long)(q->cpu_total.member)) 
 
-#define VERSION "15c" 
+#define VERSION "15d" 
 char version[] = VERSION;
 static char *SccsId = "nmon " VERSION;
 
