@@ -1,6 +1,6 @@
 # NOTE: link the curent working copy of the code to lmon.c for compiling
 CFLAGS=-g -O3 -D JFS -D GETUSER -Wall -D LARGEMEM -lm
-# CFLAGS=-g -O2 -D JFS -D GETUSER -Wall -D POWER
+#CFLAGS=-g -O2 -D JFS -D GETUSER -Wall -D POWER
 #CFLAGS=-g -D JFS -D GETUSER 
 LDFLAGS=-lncurses -g
 FILE=lmon15e.c
