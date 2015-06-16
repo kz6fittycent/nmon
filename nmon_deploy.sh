@@ -13,6 +13,7 @@ nmonLogDir=""
 
 senderArgs="" 
 senderKey=""
+senderProtocol=""
 
 systemSender=""
 systemServers=""
@@ -21,21 +22,23 @@ systemKey=""
 systemDirectory=""
 systemUserSudo=""
 systemKeySudo=""
+systemPwd=""
+systemSudoPwd=""
 
 cronShedule=""
 testVar="test"
 
-while getopts "nrc:i" opt
+while getopts "ndc:i" opt
 do
     case $opt in
         c) propertyFile="$OPTARG";;
         n) modifyCron="false";;
-        r) mode="reset";;
+        d) mode="reset";;
         i) mode="install";;
         *) echo "Available arguments: "
            echo "-c [propertyFilePath] : set path to property file. Default path: $propertyFile."
            echo "-n                    : do not modify cron. Will useful to update nmon or sender script."
-           echo "-r                    : reset servers to default state ( restore crontab, remove nmon directory )."
+           echo "-d                    : comment out cron jobs which run from deploy.directory"
            echo "-i                    : install mode. Check and install dependencies only. Requires the sudo credendials."
            exit 1
            ;;
@@ -56,8 +59,8 @@ readProperties () {
         if [ `echo "$line" | grep -q "^#.*$"` ]; then
             continue
         fi
-        key="`echo $line | awk -F = '{print $1}'`" 
-        value="`echo $line | awk -F = '{print $2}'`" 
+        key="`echo $line | awk -F = '{print $1}' | xargs`" 
+        value="`echo $line | awk -F = '{print $2}' | xargs`" 
         case "$key" in
             "nmon.s")
                 validValue="`echo "$value" | sed s/[^0-9]//g`"
@@ -93,7 +96,7 @@ readProperties () {
                     cronMinute="$value"
                 fi
                 ;;
-            "sender.port")
+            "atsd.port")
                 validValue="`echo "$value" | sed s/[^0-9]//g`"
                 if [ "$validValue" != "$value" -o "$validValue" = "" ]; then
                     echo "Invalid property: $key. Only digit value available."
@@ -101,13 +104,13 @@ readProperties () {
                     senderArgs="$senderArgs -p $value"
                 fi
                 ;;
-            "sender.server")
+            "atsd.hostname")
                 senderServer="$value"
                 ;;
-            "sender.user")
+            "atsd.user")
                 senderArgs="$senderArgs -u $value"
                 ;;
-            "sender.key")
+            "atsd.key")
                 if [ ! -f "$value" ]; then
                     echo "ssh key file to send nmon data not found. ERROR."
                     exit 1
@@ -115,16 +118,36 @@ readProperties () {
                     senderKey="`readlink -f $value`"
                 fi
                 ;;
-            "system.server")
+            "atsd.protocol" )
+                senderProtocol=$value
+                if [ "$value" != "telnet" -a "$value" != "ssh" ]; then
+                    echo "atsd.protocol has invalid value. Available values: telnet, ssh. ERROR."
+                    exit 1
+                else
+                    if [ "$value" = "telnet" ]; then
+                        systemSender="./nmon_sender_telnet.sh"
+                    elif [ "$value" = "ssh" ]; then
+                        systemSender="./nmon_sender_ssh.sh"
+                    fi
+                fi
+                if [ ! -f "$systemSender" ]; then
+                    echo "Can not find sender-script : $systemSender to user protocol : $value. Please check all script to exist. ERROR."
+                    exit 1
+                else
+                    systemSender="`readlink -f $systemSender`"
+                fi
+                ;;
+
+            "deploy.target")
                 systemServers="$systemServers $value"
                 ;;
-            "system.user")
+            "deploy.user")
                 systemUser="$value"
                 ;;
-            "system.user.sudo")
+            "deploy.sudo.user")
                 systemUserSudo="$value"
                 ;;
-            "system.key")
+            "deploy.key")
                 if [ ! -f "$value" ]; then
                     echo "ssh key file to deploy nmon files not found. ERROR."
                     exit 1
@@ -132,7 +155,7 @@ readProperties () {
                     systemKey="`readlink -f $value`"
                 fi
                 ;;
-            "system.key.sudo")
+            "deploy.sudo.key")
                 if [ ! -f "$value" ]; then
                     echo "ssh key file to install nmon dependencies not found. ERROR."
                     exit 1
@@ -140,15 +163,27 @@ readProperties () {
                     systemKeySudo="`readlink -f $value`"
                 fi
                 ;;
-            "system.sender")
-                if [ ! -f "$value" ]; then
-                    echo "file in property $key does not exist: $value."
-                    exit 1
-                else
-                    systemSender="`readlink -f $value`"
+            "deploy.password")
+                systemPwd="$value"
+                if [ "$value" != "" ]; then
+                    if ! which sshpass; then
+                        echo "Can not find sshpass utility, which is required to use password for ssh connection."
+                        echo "Please install sshpass utility or use ssh-keys to continue."
+                        exit 1
+                    fi
                 fi
                 ;;
-            "system.nmon")
+            "deploy.sudo.password")
+                systemSudoPwd="$value"
+                if [ "$value" != "" ]; then
+                    if ! which sshpass; then
+                        echo "Can not find sshpass utility, which is required to use password for ssh connection."
+                        echo "Please install sshpass utility or use ssh-keys to continue."
+                        exit 1
+                    fi
+                fi
+                ;;
+            "deploy.nmon-binary")
                 if [ ! -f "$value" ]; then
                     echo "file in property $key does not exist: $value."
                     exit 1
@@ -156,10 +191,10 @@ readProperties () {
                     systemNmon="`readlink -f $value`"
                 fi
                 ;;
-            "system.directory.log")
+            "deploy.directory.log")
                 nmonLogDir="$value"
                 ;;
-            "system.directory")
+            "deploy.directory")
                 systemDirectory="$value"
                 nmonLogDir="$value/nmon_logs"
                 nmonArgs="$nmonArgs -m $value/nmon_logs/"
@@ -182,17 +217,20 @@ readProperties () {
 showParsed () {
     echo ""
     echo "nmonArgs: $nmonArgs"
-    echo "senderArgs: $senderArgs"
-    echo "senderKey: $senderKey"
-    echo "systemServers: $systemServers"
-    echo "systemUser: $systemUser"
-    echo "systemKey: $systemKey"
-    echo "systemUserSudo: $systemUserSudo"
-    echo "systemKeySudo: $systemKeySudo"
-    echo "systemDirectory: $systemDirectory"
+    echo "scriptArgs: $senderArgs"
+    echo "atsdKey: $senderKey"
+    echo "protocol: $senderProtocol"
+    echo "deployServers: $systemServers"
+    echo "deployUser: $systemUser"
+    echo "deployKey: $systemKey"
+    echo "deployPwd: $systemPwd"
+    echo "deploySudoUser: $systemUserSudo"
+    echo "deploySudoKey: $systemKeySudo"
+    echo "deploySudoPassword: $systemSudoPwd"
+    echo "deployDirectory: $systemDirectory"
     echo "cronShedule: $cronShedule"
     echo "nmon: $systemNmon"
-    echo "sender: $systemSender"
+    echo "sender-script: $systemSender ( based on protocol: $senderProtocol )"
     echo ""
 }
 
@@ -220,18 +258,40 @@ configureServers () {
         [ "$port" = "" ] && port=22
         echo "Working with server: $addr, port: $port"
         echo "Configure server ..."
-        ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "mkdir -p $nmonLogDir; [ ! -f /home/$systemUser/.cronDefault ] && crontab -l > /home/$systemUser/.cronDefault"  >>$outputLog 2>&1 #create cron backup if no exist and required directories.
-        scp -i $systemKey -P $port $nmonTools $systemUser@$addr:$systemDirectory/ >>$outputLog 2>&1 #copy archive to server
+        if [ "$systemPwd" = "" ]; then 
+            ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "mkdir -p $nmonLogDir; [ ! -f /home/$systemUser/.cronDefault ] && crontab -l > /home/$systemUser/.cronDefault"  >>$outputLog 2>&1 #create cron backup if no exist and required directories.
+            scp -i $systemKey -P $port $nmonTools $systemUser@$addr:$systemDirectory/ >>$outputLog 2>&1 #copy archive to server
+        else
+            sshpass -p "$systemPwd" ssh -o "StrictHostKeyChecking no" -p $port $systemUser@$addr "mkdir -p $nmonLogDir; [ ! -f /home/$systemUser/.cronDefault ] && crontab -l > /home/$systemUser/.cronDefault"  >>$outputLog 2>&1 #create cron backup if no exist and required directories.
+            if [ $? -eq 5 ]; then
+                echo "Can not connect to remote server: $addr:$port with current credentials:"
+                echo "user: $systemUser"
+                echo "password: $systemPwd"
+                echo ""
+                continue
+            fi
+            sshpass -p "$systemPwd" scp -P $port $nmonTools $systemUser@$addr:$systemDirectory/ >>$outputLog 2>&1 #copy archive to server
+        fi
+
         echo "Archive copied."
 
         if [ "$modifyCron" = "true" ]; then
             echo "Cron will be modified." 
-            ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "cd $systemDirectory && tar -xf nmon.tar; crontab -l > tmpcron; echo \"$cronShedule $systemDirectory/$nmon $nmonArgs\" >>tmpcron && echo \"$cronShedule $systemDirectory/$sender $senderArgs\" >>tmpcron; echo "" >>tmpcron; crontab tmpcron" >>$outputLog 2>&1 #extracting files, modify cron
+            if [ "$systemPwd" = "" ]; then 
+                ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "cd $systemDirectory && tar -xf nmon.tar; crontab -l > tmpcron; echo \"$cronShedule $systemDirectory/$nmon $nmonArgs\" >>tmpcron && echo \"$cronShedule $systemDirectory/$sender $senderArgs\" >>tmpcron; echo "" >>tmpcron; crontab tmpcron" >>$outputLog 2>&1 #extracting files, modify cron
+            else
+                sshpass -p "$systemPwd" ssh -o "StrictHostKeyChecking no" -p $port $systemUser@$addr "cd $systemDirectory && tar -xf nmon.tar; crontab -l > tmpcron; echo \"$cronShedule $systemDirectory/$nmon $nmonArgs\" >>tmpcron && echo \"$cronShedule $systemDirectory/$sender $senderArgs\" >>tmpcron; echo "" >>tmpcron; crontab tmpcron" >>$outputLog 2>&1 #extracting files, modify cron
+            fi
         else
             echo "Cron will not be modified ( -n )."
-            ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "cd $systemDirectory && tar -xf nmon.tar" >>$outputLog 2>&1 #just extracting files ( update mode )
+            if [ "$systemPwd" = "" ]; then 
+                ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "cd $systemDirectory && tar -xf nmon.tar" >>$outputLog 2>&1 #just extracting files ( update mode )
+            else
+                sshpass -p "$systemPwd" ssh -o "StrictHostKeyChecking no" -p $port $systemUser@$addr "cd $systemDirectory && tar -xf nmon.tar" >>$outputLog 2>&1 #just extracting files ( update mode )
+            fi
         fi
         echo "Nmon deployed."
+        echo ""
     done
 }
 
@@ -241,12 +301,25 @@ resetServers () {
         port="`echo $server | awk -F : '{print $2}'`" 
         [ "$port" = "" ] && port=22
         echo "Working with server: $addr, port: $port"
-        ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "rm -rf $systemDirectory; if [ -f /home/$systemUser/.cronDefault ]; then crontab /home/$systemUser/.cronDefault; exit 0; else exit 1; fi;" >>$outputLog 2>&1
-        if [ $? -eq 0 ]; then
-            echo "Server reset."
+        preparedDirectory="`echo "$systemDirectory" |sed "s/\\//\\\\\\\\\\\\//g"`"
+        if [ "$systemPwd" = "" ]; then 
+            #ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "rm -rf $systemDirectory; if [ -f /home/$systemUser/.cronDefault ]; then crontab /home/$systemUser/.cronDefault; exit 0; else exit 1; fi;" >>$outputLog 2>&1
+            ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "crontab -l | sed -r '/^[0-9\ \*]*$preparedDirectory.*/ s/^/#/' | crontab -" >>$outputLog 2>&1
+        else
+            sshpass -p "systemPwd" ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "crontab -l | sed -r '/^[0-9\ \*]*$preparedDirectory.*/ s/^/#/' | crontab -" >>$outputLog 2>&1
+            #sshpass -p "$systemPwd" ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "crontab -l | sed -r '/^[0-9\ \*]*\$preparedDirectory.*/ s/^/#/' | crontab -" >>$outputLog 2>&1
+        fi
+        ec=$?
+        if [ $ec -eq 0 ]; then
+            echo "Jobs commented out."
+        elif [ $ec -eq 5 ]; then
+            echo "Can not connect to remote server: $addr:$port with current credentials:"
+            echo "user: $systemUser"
+            echo "password: $systemPwd"
         else
             echo "Directory clean up, but default nmon file was not found to reset cron. Server reset."
         fi
+        echo ""
     done
 }
 
@@ -259,7 +332,11 @@ checkDependencies () {
         port="`echo $server | awk -F : '{print $2}'`" 
         [ "$port" = "" ] && port=22
         echo "Working with server: $addr, port: $port"
-        ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "for util in $dependencies; do if ! which \$util >/dev/null 2>&1; then if [ \"\$util\" != \"cron\" ]; then exit 1; fi; fi; done; if [ \"\`ps -ef | grep cron | grep -v \"grep\"\`\" = \"\" ]; then exit 2; fi; if [ \"\`ps -ef | grep -i "nmon[[:space:]]" | grep -v \"\$\$\" |grep -v \"grep\"\`\" != \"\" ]; then exit 3; fi; exit 0" >>$outputLog 2>&1
+        if [ "$systemPwd" = "" ]; then
+            ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "for util in $dependencies; do if ! which \$util >/dev/null 2>&1; then if [ \"\$util\" != \"cron\" ]; then exit 1; fi; fi; done; if [ \"\`ps -ef | grep cron | grep -v \"grep\"\`\" = \"\" ]; then exit 2; fi; if [ \"\`ps -ef | grep -i "nmon[[:space:]]" | grep -v \"\$\$\" |grep -v \"grep\"\`\" != \"\" ]; then exit 3; fi; exit 0" >>$outputLog 2>&1
+        else
+            sshpass -p "$systemPwd" ssh -o "StrictHostKeyChecking no" -p $port $systemUser@$addr "for util in $dependencies; do if ! which \$util >/dev/null 2>&1; then if [ \"\$util\" != \"cron\" ]; then exit 1; fi; fi; done; if [ \"\`ps -ef | grep cron | grep -v \"grep\"\`\" = \"\" ]; then exit 2; fi; if [ \"\`ps -ef | grep -i "nmon[[:space:]]" | grep -v \"\$\$\" |grep -v \"grep\"\`\" != \"\" ]; then exit 3; fi; exit 0" >>$outputLog 2>&1
+        fi
         ec=$?
         echo -n "$addr:$port "
         if [ $ec -eq 1 ]; then
@@ -273,6 +350,10 @@ checkDependencies () {
         elif [ $ec -eq 3 ]; then
             echo "nmon already running on current machine. Deploying to this machine will not continue."
             dependenciesFailed="true"
+        elif [ $ec -eq 5 ]; then
+            echo "Can not connect to remote server: $addr:$port with current credentials:"
+            echo "user: $systemUser"
+            echo "password: $systemPwd"
         else
             echo "is OK"
         fi
@@ -289,12 +370,20 @@ installDependencies () {
         port="`echo $server | awk -F : '{print $2}'`" 
         [ "$port" = "" ] && port=22
         echo "Installation of dependencies: Working with server: $addr, port: $port"
-        ssh -o "StrictHostKeyChecking no" -i $systemKeySudo -p $port $systemUserSudo@$addr "which yum && yum install -y cronie telnet net-tools || which zypper && zypper -n install cron telnet net-tools || which apt-get && apt-get install -y cron telnet net-tools; if [ \"\`ps -ef | grep cron | grep -v \"grep\"\`\" = \"\" ]; then cron; fi; for util in $dependencies; do if ! which \$util >/dev/null 2>&1; then if [ \"\$util\" != \"cron\" ]; then exit 1; fi; fi; done; if [ \"\`ps -ef | grep cron | grep -v \"grep\"\`\" = \"\" ]; then exit 2; fi; exit 0" >>$outputLog 2>&1
+        if [ "$systemSudoPwd" = "" ]; then
+            ssh -o "StrictHostKeyChecking no" -i $systemKeySudo -p $port $systemUserSudo@$addr "which yum && yum install -y cronie telnet net-tools || which zypper && zypper -n install cron telnet net-tools || which apt-get && apt-get install -y cron telnet net-tools; if [ \"\`ps -ef | grep cron | grep -v \"grep\"\`\" = \"\" ]; then cron; fi; for util in $dependencies; do if ! which \$util >/dev/null 2>&1; then if [ \"\$util\" != \"cron\" ]; then exit 1; fi; fi; done; if [ \"\`ps -ef | grep cron | grep -v \"grep\"\`\" = \"\" ]; then exit 2; fi; exit 0" >>$outputLog 2>&1
+        else
+            sshpass -p "$systemSudoPwd" ssh -o "StrictHostKeyChecking no" -p $port $systemUserSudo@$addr "which yum && yum install -y cronie telnet net-tools || which zypper && zypper -n install cron telnet net-tools || which apt-get && apt-get install -y cron telnet net-tools; if [ \"\`ps -ef | grep cron | grep -v \"grep\"\`\" = \"\" ]; then cron; fi; for util in $dependencies; do if ! which \$util >/dev/null 2>&1; then if [ \"\$util\" != \"cron\" ]; then exit 1; fi; fi; done; if [ \"\`ps -ef | grep cron | grep -v \"grep\"\`\" = \"\" ]; then exit 2; fi; exit 0" >>$outputLog 2>&1
+        fi
         ec=$?
         if [ $ec -eq 1 ]; then
             echo "Cannot install dependencies on current server. Please install them manually."
         elif [ $ec -eq 2 ]; then
             echo "Cannot run cron daemon ( or install it ) automaticly. Please start it manually before procceeding."
+        elif [ $ec -eq 5 ]; then
+            echo "Can not connect to remote server with current credentials:"
+            echo "user: $systemUserSudo"
+            echo "password: $systemSudoPwd"
         else
             echo "Dependencies on server $server have been installed."
         fi
@@ -304,29 +393,26 @@ installDependencies () {
 
 }
 
-
-
 readProperties
 showParsed
-
 echo "Current mode: $mode"
 echo ""
 case "$mode" in
     "reset")
         [ "$systemUser" = "" ] && echo "User not defined. ERROR." && exit 1
-        [ "$systemKey" = "" ] && echo "ssh-key not defined. ERROR." && exit 1
+        [ "$systemKey" = "" -a "$systemPwd" = "" ] && echo "$systemUser ssh-key and password for user not defined. ERROR." && exit 1
         resetServers
         exit 0
         ;;
     "install")
         [ "$systemUserSudo" = "" ] && echo "Sudo user not defined. ERROR." && exit 1
-        [ "$systemKeySudo" = "" ] && echo "Sudo ssh-key not defined. ERROR." && exit 1
+        [ "$systemKeySudo" = "" -a "$systemSudoPwd" = "" ] && echo "Sudo ssh-key and password not defined. ERROR." && exit 1
         installDependencies
         exit 0
         ;;
     *)
         [ "$systemUser" = "" ] && echo "User not defined. ERROR." && exit 1
-        [ "$systemKey" = "" ] && echo "ssh-key not defined. ERROR." && exit 1
+        [ "$systemKey" = ""  -a "$systemPwd" = "" ] && echo "ssh-key not defined. ERROR." && exit 1
         tarFiles
         checkDependencies
         if [ $? -eq 0 ]; then
