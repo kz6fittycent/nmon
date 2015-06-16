@@ -393,8 +393,6 @@ installDependencies () {
 
 }
 
-
-
 readProperties
 showParsed
 echo "Current mode: $mode"
