@@ -1,5 +1,4 @@
 #!/bin/sh
-
 scriptDir="`readlink -f $0 | xargs dirname`"
 outputLog="$scriptDir/output.log"
 propertyFile="$scriptDir/deploy.properties"
@@ -280,9 +279,9 @@ configureServers () {
         if [ "$modifyCron" = "true" ]; then
             echo "Cron will be modified." 
             if [ "$systemPwd" = "" ]; then 
-                ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "cd $systemDirectory && tar -xf nmon.tar; crontab -l > tmpcron; echo \"$cronShedule $systemDirectory/$nmon $nmonArgs\" >>tmpcron && echo \"$cronShedule $systemDirectory/$sender $senderArgs\" >>tmpcron; echo "" >>tmpcron; crontab tmpcron; eval \"\`echo '$systemDirectory/$nmon $nmonArgs' | sed -r s/-c\ [0-9]+/\-c\ `expr 1439 - \( \`date +%H\` \* 60 + \`date +%M\` \)`/\`\"; eval \"\`echo '$systemDirectory/$sender $senderArgs' | sed -r s/-c\ [0-9]+/\-c\ `expr 1439 - \( \`date +%H\` \* 60 + \`date +%M\` \)`/\` & \";" >>$outputLog 2>&1 #extracting files, modify cron
+                ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "cd $systemDirectory && tar -xf nmon.tar; crontab -l > tmpcron; echo \"$cronShedule $systemDirectory/$nmon $nmonArgs\" >>tmpcron && echo \"$cronShedule $systemDirectory/$sender $senderArgs\" >>tmpcron; echo \"\" >>tmpcron; crontab tmpcron" >>$outputLog 2>&1 #extracting files, modify cron
             else
-                sshpass -p "$systemPwd" ssh -o "StrictHostKeyChecking no" -p $port $systemUser@$addr "cd $systemDirectory && tar -xf nmon.tar; crontab -l > tmpcron; echo \"$cronShedule $systemDirectory/$nmon $nmonArgs\" >>tmpcron && echo \"$cronShedule $systemDirectory/$sender $senderArgs\" >>tmpcron; echo "" >>tmpcron; crontab tmpcron; eval \"\`echo '$systemDirectory/$nmon $nmonArgs' | sed -r s/-c\ [0-9]+/\-c\ `expr 1439 - \( \`date +%H\` \* 60 + \`date +%M\` \)`/\`\"; eval \"\`echo '$systemDirectory/$sender $senderArgs' | sed -r s/-c\ [0-9]+/\-c\ `expr 1439 - \( \`date +%H\` \* 60 + \`date +%M\` \)`/\` &\";" >>$outputLog 2>&1 #extracting files, modify cron
+                sshpass -p "$systemPwd" ssh -o "StrictHostKeyChecking no" -p $port $systemUser@$addr "cd $systemDirectory && tar -xf nmon.tar; crontab -l > tmpcron; echo \"$cronShedule $systemDirectory/$nmon $nmonArgs\" >>tmpcron && echo \"$cronShedule $systemDirectory/$sender $senderArgs\" >>tmpcron; echo \"\" >>tmpcron; crontab tmpcron" >>$outputLog 2>&1 #extracting files, modify cron
             fi
         else
             echo "Cron will not be modified ( -n )."
@@ -291,6 +290,18 @@ configureServers () {
             else
                 sshpass -p "$systemPwd" ssh -o "StrictHostKeyChecking no" -p $port $systemUser@$addr "cd $systemDirectory && tar -xf nmon.tar" >>$outputLog 2>&1 #just extracting files ( update mode )
             fi
+        fi
+        echo "Starting nmon ..."
+        ec=0
+        if [ "$systemPwd" = "" ]; then 
+            ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "if [ -z \"\`ps -ef | grep \"$systemDirectory/$nmon\" | grep -v \"grep\"\`\" ]; then eval \"\`echo '$systemDirectory/$nmon $nmonArgs' | sed -r s/-c\ [0-9]+/\-c\ `expr 1439 - \( \`date +%H\` \* 60 + \`date +%M\` \)`/\`\"; eval \"\`echo '$systemDirectory/$sender $senderArgs' | sed -r s/-c\ [0-9]+/\-c\ `expr 1439 - \( \`date +%H\` \* 60 + \`date +%M\` \)`/\` & \"; exit 0; else exit 2; fi" >>$outputLog 2>&1 #extracting files, modify cron
+            ec=$?
+        else
+            sshpass -p "$systemPwd" ssh -o "StrictHostKeyChecking no" -p $port $systemUser@$addr "if [ -z \"\`ps -ef | grep $systemDirectory/$nmon | grep -v \"grep\"\`\" ]; then eval \"\`echo '$systemDirectory/$nmon $nmonArgs' | sed -r s/-c\ [0-9]+/\-c\ `expr 1439 - \( \`date +%H\` \* 60 + \`date +%M\` \)`/\`\"; eval \"\`echo '$systemDirectory/$sender $senderArgs' | sed -r s/-c\ [0-9]+/\-c\ `expr 1439 - \( \`date +%H\` \* 60 + \`date +%M\` \)`/\` &\"; exit 0; else exit 2; fi" >>$outputLog 2>&1 #extracting files, modify cron
+            ec=$?
+        fi
+        if [ $ec -eq 2 ]; then
+            echo "nmon is already running."
         fi
         echo "Nmon deployed."
         echo ""
