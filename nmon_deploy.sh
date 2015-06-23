@@ -263,7 +263,8 @@ configureServers () {
             scp -i $systemKey -P $port $nmonTools $systemUser@$addr:$systemDirectory/ >>$outputLog 2>&1 #copy archive to server
         else
             sshpass -p "$systemPwd" ssh -o "StrictHostKeyChecking no" -p $port $systemUser@$addr "mkdir -p $nmonLogDir; [ ! -f /home/$systemUser/.cronDefault ] && crontab -l > /home/$systemUser/.cronDefault"  >>$outputLog 2>&1 #create cron backup if no exist and required directories.
-            if [ $? -eq 5 ]; then
+            ec=$?
+            if [ $ec -eq 5 -o $ec -eq 255 ]; then
                 echo "Can not connect to remote server: $addr:$port with current credentials:"
                 echo "user: $systemUser"
                 echo "password: $systemPwd"
@@ -278,9 +279,9 @@ configureServers () {
         if [ "$modifyCron" = "true" ]; then
             echo "Cron will be modified." 
             if [ "$systemPwd" = "" ]; then 
-                ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "cd $systemDirectory && tar -xf nmon.tar; crontab -l > tmpcron; echo \"$cronShedule $systemDirectory/$nmon $nmonArgs\" >>tmpcron && echo \"$cronShedule $systemDirectory/$sender $senderArgs\" >>tmpcron; echo "" >>tmpcron; crontab tmpcron" >>$outputLog 2>&1 #extracting files, modify cron
+                ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "cd $systemDirectory && tar -xf nmon.tar; crontab -l > tmpcron; echo \"$cronShedule $systemDirectory/$nmon $nmonArgs\" >>tmpcron && echo \"$cronShedule $systemDirectory/$sender $senderArgs\" >>tmpcron; echo "" >>tmpcron; crontab tmpcron; eval \"\`echo '$systemDirectory/$nmon $nmonArgs' | sed -r s/-c\ [0-9]+/\-c\ `expr 1439 - \( \`date +%H\` \* 60 + \`date +%M\` \)`/\`\"; eval \"\`echo '$systemDirectory/$sender $senderArgs' | sed -r s/-c\ [0-9]+/\-c\ `expr 1439 - \( \`date +%H\` \* 60 + \`date +%M\` \)`/\` & \";" >>$outputLog 2>&1 #extracting files, modify cron
             else
-                sshpass -p "$systemPwd" ssh -o "StrictHostKeyChecking no" -p $port $systemUser@$addr "cd $systemDirectory && tar -xf nmon.tar; crontab -l > tmpcron; echo \"$cronShedule $systemDirectory/$nmon $nmonArgs\" >>tmpcron && echo \"$cronShedule $systemDirectory/$sender $senderArgs\" >>tmpcron; echo "" >>tmpcron; crontab tmpcron" >>$outputLog 2>&1 #extracting files, modify cron
+                sshpass -p "$systemPwd" ssh -o "StrictHostKeyChecking no" -p $port $systemUser@$addr "cd $systemDirectory && tar -xf nmon.tar; crontab -l > tmpcron; echo \"$cronShedule $systemDirectory/$nmon $nmonArgs\" >>tmpcron && echo \"$cronShedule $systemDirectory/$sender $senderArgs\" >>tmpcron; echo "" >>tmpcron; crontab tmpcron; eval \"\`echo '$systemDirectory/$nmon $nmonArgs' | sed -r s/-c\ [0-9]+/\-c\ `expr 1439 - \( \`date +%H\` \* 60 + \`date +%M\` \)`/\`\"; eval \"\`echo '$systemDirectory/$sender $senderArgs' | sed -r s/-c\ [0-9]+/\-c\ `expr 1439 - \( \`date +%H\` \* 60 + \`date +%M\` \)`/\` &\";" >>$outputLog 2>&1 #extracting files, modify cron
             fi
         else
             echo "Cron will not be modified ( -n )."
@@ -306,13 +307,13 @@ resetServers () {
             #ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "rm -rf $systemDirectory; if [ -f /home/$systemUser/.cronDefault ]; then crontab /home/$systemUser/.cronDefault; exit 0; else exit 1; fi;" >>$outputLog 2>&1
             ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "crontab -l | sed -r '/^[0-9\ \*]*$preparedDirectory.*/ s/^/#/' | crontab -" >>$outputLog 2>&1
         else
-            sshpass -p "systemPwd" ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "crontab -l | sed -r '/^[0-9\ \*]*$preparedDirectory.*/ s/^/#/' | crontab -" >>$outputLog 2>&1
+            sshpass -p "$systemPwd" ssh -o "StrictHostKeyChecking no" -p $port $systemUser@$addr "crontab -l | sed -r '/^[0-9\ \*]*$preparedDirectory.*/ s/^/#/' | crontab -" >>$outputLog 2>&1
             #sshpass -p "$systemPwd" ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "crontab -l | sed -r '/^[0-9\ \*]*\$preparedDirectory.*/ s/^/#/' | crontab -" >>$outputLog 2>&1
         fi
         ec=$?
         if [ $ec -eq 0 ]; then
             echo "Jobs commented out."
-        elif [ $ec -eq 5 ]; then
+        elif [ $ec -eq 5 -o $ec -eq 255 ]; then
             echo "Can not connect to remote server: $addr:$port with current credentials:"
             echo "user: $systemUser"
             echo "password: $systemPwd"
@@ -333,9 +334,9 @@ checkDependencies () {
         [ "$port" = "" ] && port=22
         echo "Working with server: $addr, port: $port"
         if [ "$systemPwd" = "" ]; then
-            ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "for util in $dependencies; do if ! which \$util >/dev/null 2>&1; then if [ \"\$util\" != \"cron\" ]; then exit 1; fi; fi; done; if [ \"\`ps -ef | grep cron | grep -v \"grep\"\`\" = \"\" ]; then exit 2; fi; if [ \"\`ps -ef | grep -i "nmon[[:space:]]" | grep -v \"\$\$\" |grep -v \"grep\"\`\" != \"\" ]; then exit 3; fi; exit 0" >>$outputLog 2>&1
+            ssh -o "StrictHostKeyChecking no" -i $systemKey -p $port $systemUser@$addr "for util in $dependencies; do if ! which \$util >/dev/null 2>&1; then if [ \"\$util\" != \"cron\" ]; then exit 1; fi; fi; done; if [ \"\`ps -ef | grep cron | grep -v \"grep\"\`\" = \"\" ]; then exit 2; fi; if [ \"\`ps -ef | grep -i "nmon[[:space:]]" | grep -v \"\$\$\" |grep -v \"grep\"\`\" != \"\" ]; then exit 3; fi; if grep -qi \"suse\" /proc/version; then if [ ! -f /lib64/libtinfo.so.5 ]; then exit 4; fi; fi; exit 0" >>$outputLog 2>&1
         else
-            sshpass -p "$systemPwd" ssh -o "StrictHostKeyChecking no" -p $port $systemUser@$addr "for util in $dependencies; do if ! which \$util >/dev/null 2>&1; then if [ \"\$util\" != \"cron\" ]; then exit 1; fi; fi; done; if [ \"\`ps -ef | grep cron | grep -v \"grep\"\`\" = \"\" ]; then exit 2; fi; if [ \"\`ps -ef | grep -i "nmon[[:space:]]" | grep -v \"\$\$\" |grep -v \"grep\"\`\" != \"\" ]; then exit 3; fi; exit 0" >>$outputLog 2>&1
+            sshpass -p "$systemPwd" ssh -o "StrictHostKeyChecking no" -p $port $systemUser@$addr "for util in $dependencies; do if ! which \$util >/dev/null 2>&1; then if [ \"\$util\" != \"cron\" ]; then exit 1; fi; fi; done; if [ \"\`ps -ef | grep cron | grep -v \"grep\"\`\" = \"\" ]; then exit 2; fi; if [ \"\`ps -ef | grep -i "nmon[[:space:]]" | grep -v \"\$\$\" |grep -v \"grep\"\`\" != \"\" ]; then exit 3; fi; if grep -qi \"suse\" /proc/version; then if [ ! -f /lib64/libtinfo.so.5 ]; then exit 4; fi; fi; exit 0" >>$outputLog 2>&1
         fi
         ec=$?
         echo -n "$addr:$port "
@@ -350,12 +351,19 @@ checkDependencies () {
         elif [ $ec -eq 3 ]; then
             echo "nmon already running on current machine. Deploying to this machine will not continue."
             dependenciesFailed="true"
-        elif [ $ec -eq 5 ]; then
+        elif [ $ec -eq 4 ]; then
+            echo "libtinfo.so.5 library does not exist. To fix it, you can run the follow command on target machine: sudo ln -s /lib64/libncurses.so.5.6 /lib64/libtinfo.so.5"
+            dependenciesFailed="true"
+        elif [ $ec -eq 5 -o $ec -eq 255 ]; then
             echo "Can not connect to remote server: $addr:$port with current credentials:"
             echo "user: $systemUser"
             echo "password: $systemPwd"
-        else
+            dependenciesFailed="true"
+        elif [ $ec -eq 0 ]; then
             echo "is OK"
+        else
+            echo "Unrecognized error. Can not check dependencies."
+            dependenciesFailed="true"
         fi
         echo ""
     done
@@ -380,7 +388,7 @@ installDependencies () {
             echo "Cannot install dependencies on current server. Please install them manually."
         elif [ $ec -eq 2 ]; then
             echo "Cannot run cron daemon ( or install it ) automaticly. Please start it manually before procceeding."
-        elif [ $ec -eq 5 ]; then
+        elif [ $ec -eq 5 -o $ec -eq 255 ]; then
             echo "Can not connect to remote server with current credentials:"
             echo "user: $systemUserSudo"
             echo "password: $systemSudoPwd"
