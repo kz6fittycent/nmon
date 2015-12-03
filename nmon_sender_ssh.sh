@@ -44,7 +44,7 @@ do
             echo "-p [port]           : set ssh connection port ( \"22\" by default )"
             echo "-r [parser_id]      : set praser id ( \"default\" by default )"
             echo "-f [file_path]      : set path to nmon file manually"
-	        echo "-a [port]	      : set ATSD listening port"
+	        echo "-a [port]	          : set ATSD listening port"
             exit 1;;
         s) second="$OPTARG";;
         c) count="$OPTARG";;
