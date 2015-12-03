@@ -20,6 +20,7 @@ handleNmonfile=""
 user="atsdreadonly"
 keypath="$HOME/.ssh/id_rsa_atsdreadonly"
 port="22"
+atsdPort="8081"
 parser="default"
 sleeptime=10
 if [ "$1" = "" -o "`echo $1 | cut -c 1`" = "-" ]; then
@@ -28,7 +29,7 @@ if [ "$1" = "" -o "`echo $1 | cut -c 1`" = "-" ]; then
 fi
 server=$1
 shift  1
-while getopts "hs:c:m:u:i:p:r:f:" opt
+while getopts "hs:c:m:u:i:p:r:f:a:" opt
 do
     case $opt in
         h) 
@@ -43,6 +44,7 @@ do
             echo "-p [port]           : set ssh connection port ( \"22\" by default )"
             echo "-r [parser_id]      : set praser id ( \"default\" by default )"
             echo "-f [file_path]      : set path to nmon file manually"
+	        echo "-a [port]	          : set ATSD listening port"
             exit 1;;
         s) second="$OPTARG";;
         c) count="$OPTARG";;
@@ -52,6 +54,7 @@ do
         p) port="$OPTARG";;
         r) parser="$OPTARG";;
         f) handleNmonfile="$OPTARG";;
+	    a) atsdPort="$OPTARG";;
     esac
 done
 if [ ! -d "$dir" ]; then
@@ -261,10 +264,10 @@ defineFreeLocalport
 
 if $DEBUG; then
     writeLog "nmon command: $hdr"
-    writeLog "ssh command: ssh $sshattrib-o StrictHostKeyChecking=no -N -L $localport:localhost:8081 $user@$server -i $keypath -p $port"
+    writeLog "ssh command: ssh $sshattrib-o StrictHostKeyChecking=no -N -L $localport:localhost:$atsdPort $user@$server -i $keypath -p $port"
 fi
 
-ssh $sshattrib-o StrictHostKeyChecking=no -N -L $localport:localhost:8081 $user@$server -i $keypath -p $port >>$logfile.ssh 2>&1 &
+ssh $sshattrib-o StrictHostKeyChecking=no -N -L $localport:localhost:$atsdPort $user@$server -i $keypath -p $port >>$logfile.ssh 2>&1 &
 sleep 5
 sshpid="$!"
 { echo "$hdr"; tail -n +0 -f $nmonfile 2>$logfile.tail& echo "$!">${dir}/tailpid; } | telnet localhost $localport >>$logfile.telnet 2>&1 &
@@ -286,8 +289,8 @@ while [ "$ctime" -lt "$endtime" ]; do
              writeLog "tunnel broken, establish new tunnel after $waitReconnect seconds"
              sleep $waitReconnect
              defineFreeLocalport
-             writeLog "ssh command: ssh $sshattrib-o StrictHostKeyChecking=no -N -L $localport:localhost:8081 $user@$server -i $keypath -p $port"
-             ssh $sshattrib-o StrictHostKeyChecking=no -N -L $localport:localhost:8081 $user@$server -i $keypath -p $port >>$logfile.ssh 2>&1 & 
+             writeLog "ssh command: ssh $sshattrib-o StrictHostKeyChecking=no -N -L $localport:localhost:$atsdPort $user@$server -i $keypath -p $port"
+             ssh $sshattrib-o StrictHostKeyChecking=no -N -L $localport:localhost:$atsdPort $user@$server -i $keypath -p $port >>$logfile.ssh 2>&1 & 
              sleep 5
              sshpid="$!"
              { echo "$hdr"; echo "$fheader"; tail -n 0 -f $nmonfile 2>$logfile.tail & echo "$!" >${dir}/tailpid; } | telnet localhost $localport >>$logfile.telnet 2>&1 &
