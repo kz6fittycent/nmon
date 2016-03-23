@@ -1,14 +1,19 @@
 #!/bin/sh
+cd `dirname $0`
+RELEASE_PATH="/etc/*-release"
 distr=""
-release="`cat /etc/*-release`"
-if `echo $release | grep -qi "CentOS"`; then
+if grep -qi "centos" ${RELEASE_PATH}; then
     distr="centos"
-elif `echo $release | grep -qi "Red Hat"`; then
+elif grep -qi "red hat" ${RELEASE_PATH}; then
     distr="redhat"
-elif `echo $release | grep -qi "Ubuntu"`; then
+elif grep -qi "ubuntu" ${RELEASE_PATH}; then
     distr="ubuntu"
-elif `echo $release | grep -qi "Debian"`; then
+elif grep -qi "debian" ${RELEASE_PATH}; then
     distr="debian"
+elif grep -qiE "sles.*12" ${RELEASE_PATH}; then
+    distr="sles12"
+elif grep -qiE "sles.*13" ${RELEASE_PATH}; then
+    distr="sles13"
 fi
 
 case "$distr" in
@@ -20,6 +25,12 @@ case "$distr" in
         ;;
     "ubuntu" )
         make nmon_x86_ubuntu134
+        ;;
+    "sles12" )
+        make nmon_x86_sles12
+        ;;
+    "sles13" )
+        make nmon_x86_sles113
         ;;
     * )
         echo "Your operation system is not supported by build script. Please look makefile to build nmon for your operation system."

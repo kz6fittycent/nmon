@@ -24,7 +24,7 @@ Or download an [nmon release](https://github.com/axibase/nmon/releases) from the
 To download a specific branch use the following command:
 
 ```bash
-git clone git://github.com/axibase/nmon.git -b 15e
+git clone git://github.com/axibase/nmon.git -b 16d
 ```
 
 After this, you should enter the nmon sources directory and execute build.sh script to compile nmon ( on Debian, Ubuntu, Red Hat or Cent OS distributive ), or use 'make' utility to compile nmon from sources.
