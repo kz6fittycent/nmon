@@ -1,4 +1,5 @@
 #!/bin/sh
+
 scriptDir="`readlink -f $0 | xargs dirname`"
 outputLog="$scriptDir/output.log"
 propertyFile="$scriptDir/deploy.properties"
