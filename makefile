@@ -158,7 +158,7 @@ nmon_x86_rhel3:  $(FILE)
 nmon_x86_redhat9:  $(FILE)
 	cc -o nmon_x86_redhat9 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_rhel2:
+nmon_x86_rhel2: $(FILE)
 	cc -o nmon_x86_rhel2 $(FILE) $(CFLAGS) $(LDFLAGS) -D REREAD=1 -D X86
 
 
@@ -167,45 +167,45 @@ nmon_x86_debian3:  $(FILE)
 	cc -o nmon_x86_debian3 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
 ### x86 Red Hat Fedora
-nmon_x86_fedora10: 
+nmon_x86_fedora10:  $(FILE)
 	cc -s -o nmon_x86_fedora10 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_fedora23: 
+nmon_x86_fedora23:  $(FILE)
 	cc -s -o nmon_x86_fedora23 $(FILE) $(CFLAGS) $(LDFLAGS) -D KERNEL_2_6_18  -D X86
 
 
 #### x86 Canonical Ubuntu
-nmon_x86_ubuntu810: 
+nmon_x86_ubuntu810:  $(FILE)
 	cc -o nmon_x86_ubuntu810 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_64_ubuntu810: 
+nmon_x86_64_ubuntu810:  $(FILE)
 	cc -o nmon_x86_64_ubuntu810 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_64_ubuntu910: 
+nmon_x86_64_ubuntu910: $(FILE)  
 	cc -o nmon_x86_64_ubuntu910 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_ubuntu910: 
+nmon_x86_ubuntu910: $(FILE)  
 	cc -o nmon_x86_ubuntu910 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_ubuntu134: lmon.c
+nmon_x86_ubuntu134: $(FILE)
 	cc -o nmon_x86_ubuntu134 $(FILE) $(CFLAGS) $(LDFLAGS) -D X86
 
-nmon_x86_ubuntu1404: lmon.c
+nmon_x86_ubuntu1404: $(FILE)
 	cc -o nmon_x86_ubuntu1404 $(FILE) $(CFLAGS) $(LDFLAGS) -D KERNEL_2_6_18 -D X86
 
-nmon_x86_ubuntu140403: lmon.c
+nmon_x86_ubuntu140403: $(FILE)
 	cc -o nmon_x86_ubuntu140403 $(FILE) $(CFLAGS) $(LDFLAGS) -D KERNEL_2_6_18 -D X86
 
-nmon_x86_ubuntu1410: lmon.c
+nmon_x86_ubuntu1410: $(FILE)
 	cc -o nmon_x86_ubuntu1410 $(FILE) $(CFLAGS) $(LDFLAGS) -D KERNEL_2_6_18 -D X86
 
-nmon_x86_ubuntu1504: lmon.c
+nmon_x86_ubuntu1504: $(FILE)
 	cc -o nmon_x86_ubuntu1504 $(FILE) $(CFLAGS) $(LDFLAGS) -D KERNEL_2_6_18 -D X86
 
-nmon_x86_ubuntu1510: lmon.c
+nmon_x86_ubuntu1510: $(FILE)
 	cc -o nmon_x86_ubuntu1510 $(FILE) $(CFLAGS) $(LDFLAGS) -D KERNEL_2_6_18 -D X86
 
-nmon_x86_ubuntu1604: lmon.c
+nmon_x86_ubuntu1604: $(FILE)
 	cc -o nmon_x86_ubuntu1604 $(FILE) $(CFLAGS) $(LDFLAGS) -D KERNEL_2_6_18 -D X86
 
 
