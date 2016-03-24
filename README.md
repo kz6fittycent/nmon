@@ -100,8 +100,8 @@ wget -t 1 -T 10 --user=atsd_user --password=atsd_password --no-check-certificate
 --header="Content-type: text/csv" "https://atsd_server/api/v1/nmon?f=`basename $fn`"
 ```
 
-## Upload Hourly Files to ATSD with UNIX Socket ( require ```bash``` )
-
+## Upload Hourly Files to ATSD with UNIX Socket (  )
+> **Note:** require ```bash```
 
 * Create a file ```/opt/nmon/nmon_script.sh``` and add the following row to your cron schedule:
 
