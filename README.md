@@ -11,7 +11,7 @@ The project also hosts binary releases for supported linux distributions: Ubuntu
 
  
 
-![CPU steal time, collected with nmon](https://www.axibase.com/images/nmon_stolen_cpu.png)
+[![Chartlab Portal](https://axibase.com/wp-content/uploads/2016/03/nmon.png)](https://apps.axibase.com/chartlab/ac003f06)
 
 # Installation
 
