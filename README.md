@@ -11,7 +11,7 @@ The project also hosts binary releases for supported linux distributions: Ubuntu
 
  
 
-![CPU steal time, collected with nmon](https://www.axibase.com/images/nmon_stolen_cpu.png)
+[![Chartlab Portal](https://axibase.com/wp-content/uploads/2016/03/nmon.png)](https://apps.axibase.com/chartlab/ac003f06)
 
 # Installation
 
@@ -90,6 +90,7 @@ rm nmon_{yourDistribution}
 ```
 
 * Put the following code to ```/opt/nmon/nmon_script.sh```:
+
 > **Note:** Replace ```atsd_user, atsd_password, atsd_server``` with your real credentials.
 
 ```bash
@@ -100,7 +101,8 @@ wget -t 1 -T 10 --user=atsd_user --password=atsd_password --no-check-certificate
 --header="Content-type: text/csv" "https://atsd_server/api/v1/nmon?f=`basename $fn`"
 ```
 
-## Upload Hourly Files to ATSD with UNIX Socket (  )
+## Upload Hourly Files to ATSD with UNIX Socket
+
 > **Note:** require ```bash```
 
 * Create a file ```/opt/nmon/nmon_script.sh``` and add the following row to your cron schedule:
@@ -110,6 +112,7 @@ wget -t 1 -T 10 --user=atsd_user --password=atsd_password --no-check-certificate
 ```
 
 * Put the following code to ```/opt/nmon/nmon_script.sh```:
+
 > **Note:** Replace ```atsd_server``` with your real server name or address.
 
 ```bash
@@ -121,6 +124,15 @@ while kill -0 $pd; do sleep 15; done; \
 
 
 ## Upload Hourly Files to ATSD with nc 
+
+* Create a file ```/opt/nmon/nmon_script.sh``` and add the following row to your cron schedule:
+
+```
+0 * * * * /opt/nmon/nmon_script.sh
+```
+
+* Put the following code to ```/opt/nmon/nmon_script.sh```:
+
 > **Note:** Replace ```atsd_server``` with your real server name or address.
 
 ```bash
