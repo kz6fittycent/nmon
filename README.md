@@ -75,7 +75,7 @@ wget -t 1 -T 10 --user=atsd_user --password=atsd_password --no-check-certificate
 ## Send by ```unix socket``` ( ```bash``` is required ):
 
 ```bash
-#!/bin/sh
+#!/bin/bash
 fn="/opt/nmon/`date +%y%m%d_%H%M`.nmon";pd="`/opt/nmon/nmon -F $fn -s 6 -c 2 -T -p`"; \
 while kill -0 $pd; do sleep 15; done; \
 { echo "nmon p:default e:`hostname` f:`hostname`_file.nmon"; cat $fn; } > /dev/tcp/atsd_server/8081
