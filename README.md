@@ -8,9 +8,9 @@
 
 This fork fixes some of the issues in the original ```makefile```. 
 The project also hosts binary releases for supported linux distributions: Ubuntu, Debian, RedHat, CentOS, SLES. The binaries can be downloaded from [nmon release page](https://github.com/axibase/nmon/releases)
-
+1
  
-
+1
 [![Chartlab Portal](https://axibase.com/wp-content/uploads/2016/03/nmon.png)](https://apps.axibase.com/chartlab/ac003f06)
 
 # Installation
