@@ -47,7 +47,7 @@ rm nmon
 
 # Simple sender examples
 
-* Create a file ```/opt/nmon/nmon_sender.sh``` and add it to the cron schedule:
+* Create a file ```/opt/nmon/nmon_script.sh``` and add it to the cron schedule:
 
 ```
 0 * * * * /opt/nmon/nmon_script.sh
