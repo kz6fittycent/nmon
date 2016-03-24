@@ -74,6 +74,8 @@ rm nmon_{yourDistribution}
 
 ## Collect Nmon Files Locally
 
+* Add the following row to your cron schedule:
+
 ```
 0 * * * * /opt/nmon/nmon -f /opt/nmon/ -s 60 -c 60 -T
 ```
@@ -81,7 +83,7 @@ rm nmon_{yourDistribution}
 ## Upload Hourly Files to ATSD with wget
 
 
-* Create a file ```/opt/nmon/nmon_script.sh``` and add it to the cron schedule:
+* Create a file ```/opt/nmon/nmon_script.sh``` and add the following row to your cron schedule:
 
 ```
 0 * * * * /opt/nmon/nmon_script.sh
@@ -92,16 +94,16 @@ rm nmon_{yourDistribution}
 
 ```bash
 #!/bin/sh
-fn="/tmp/nmon/`date +%y%m%d_%H%M`.nmon";pd="`/opt/nmon/nmon -F $fn -s 60 -c 60 -T -p`"; \
+fn="/nmon/nmon/`date +%y%m%d_%H%M`.nmon";pd="`/opt/nmon/nmon -F $fn -s 60 -c 60 -T -p`"; \
 while kill -0 $pd; do sleep 15; done; \
 wget -t 1 -T 10 --user=atsd_user --password=atsd_password --no-check-certificate -O - --post-file="$fn" \
 --header="Content-type: text/csv" "https://atsd_server/api/v1/nmon?f=`basename $fn`"
 ```
 
-## Upload Hourly Files to ATSD with UNIX Socket ( ```Bash required``` )
+## Upload Hourly Files to ATSD with UNIX Socket ( require ```bash``` )
 
 
-* Create a file ```/opt/nmon/nmon_script.sh``` and add it to the cron schedule:
+* Create a file ```/opt/nmon/nmon_script.sh``` and add the following row to your cron schedule:
 
 ```
 0 * * * * /opt/nmon/nmon_script.sh
