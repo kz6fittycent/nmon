@@ -1,5 +1,5 @@
 ##nmon for Linux
-
+[![Build Status](https://travis-ci.org/axibase/nmon.svg)](https://travis-ci.org/axibase/nmon)
  
 
 "... systems administrator, tuner, benchmark tool gives you a huge amount of important performance information in one go.", according to http://nmon.sourceforge.net/pmwiki.php
@@ -44,4 +44,50 @@ Just remove nmon binary file:
 ```bash
 rm nmon
 ```
-[![Build Status](https://travis-ci.org/axibase/nmon.svg)](https://travis-ci.org/axibase/nmon)
+
+# Simple sender examples
+
+* Create a file ```/opt/nmon/nmon_sender.sh``` and add it to the cron schedule:
+
+```
+0 * * * * /opt/nmon/nmon_script.sh
+```
+
+* Put one of the following examples to ```/opt/nmon/nmon_script.sh```
+
+> **Note:** TMake sure that ```/opt/nmon/nmon``` binary is exist and executable.
+
+
+
+
+## Send by ```wget```
+
+
+
+```bash
+#!/bin/sh
+fn="/tmp/nmon/`date +%y%m%d_%H%M`.nmon";pd="`/opt/nmon/nmon_rpm -F $fn -s 60 -c 60 -T -p`"; \
+while kill -0 $pd; do sleep 15; done; \
+wget -t 1 -T 10 --user=collector --password=collector-329 --no-check-certificate -O - --post-file="$fn" \
+--header="Content-type: text/csv" "https://nur.axibase.com/api/v1/nmon?f=`basename $fn`"
+```
+
+## Send by ```unix socket``` ( ```bash``` is required ):
+
+```bash
+#!/bin/sh
+fn="/opt/nmon/`date +%y%m%d_%H%M`.nmon";pd="`/opt/nmon/nmon -F $fn -s 6 -c 2 -T -p`"; \
+while kill -0 $pd; do sleep 15; done; \
+{ echo "nmon p:default e:`hostname` f:`hostname`_hello.nmon"; cat $fn; } > /dev/tcp/atsd_server/8081
+```
+
+## Send by ```nc``` util:
+
+```bash
+#!/bin/sh
+fn="/opt/nmon/`date +%y%m%d_%H%M`.nmon";pd="`/opt/nmon/nmon -F $fn -s 6 -c 2 -T -p`"; \
+while kill -0 $pd; do sleep 15; done; \
+{ echo "nmon p:default e:`hostname` f:`hostname`_hello.nmon"; cat $fn; } | nc atsd_server 8081
+```
+
+
