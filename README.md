@@ -68,8 +68,8 @@ rm nmon
 #!/bin/sh
 fn="/tmp/nmon/`date +%y%m%d_%H%M`.nmon";pd="`/opt/nmon/nmon_rpm -F $fn -s 60 -c 60 -T -p`"; \
 while kill -0 $pd; do sleep 15; done; \
-wget -t 1 -T 10 --user=collector --password=collector-329 --no-check-certificate -O - --post-file="$fn" \
---header="Content-type: text/csv" "https://nur.axibase.com/api/v1/nmon?f=`basename $fn`"
+wget -t 1 -T 10 --user=atsd_user --password=atsd_password --no-check-certificate -O - --post-file="$fn" \
+--header="Content-type: text/csv" "https://atsd_server/api/v1/nmon?f=`basename $fn`"
 ```
 
 ## Send by ```unix socket``` ( ```bash``` is required ):
@@ -78,7 +78,7 @@ wget -t 1 -T 10 --user=collector --password=collector-329 --no-check-certificate
 #!/bin/sh
 fn="/opt/nmon/`date +%y%m%d_%H%M`.nmon";pd="`/opt/nmon/nmon -F $fn -s 6 -c 2 -T -p`"; \
 while kill -0 $pd; do sleep 15; done; \
-{ echo "nmon p:default e:`hostname` f:`hostname`_hello.nmon"; cat $fn; } > /dev/tcp/atsd_server/8081
+{ echo "nmon p:default e:`hostname` f:`hostname`_file.nmon"; cat $fn; } > /dev/tcp/atsd_server/8081
 ```
 
 ## Send by ```nc``` util:
@@ -87,7 +87,7 @@ while kill -0 $pd; do sleep 15; done; \
 #!/bin/sh
 fn="/opt/nmon/`date +%y%m%d_%H%M`.nmon";pd="`/opt/nmon/nmon -F $fn -s 6 -c 2 -T -p`"; \
 while kill -0 $pd; do sleep 15; done; \
-{ echo "nmon p:default e:`hostname` f:`hostname`_hello.nmon"; cat $fn; } | nc atsd_server 8081
+{ echo "nmon p:default e:`hostname` f:`hostname`_file.nmon"; cat $fn; } | nc atsd_server 8081
 ```
 
 
