@@ -18,13 +18,13 @@ fi
 
 case "$distr" in
     "centos" | "redhat" )
-        make nmon_x86_rhel4
+        make nmon_x86_rhel6
         ;;
     "debian" )
         make nmon_x86_debian3
         ;;
     "ubuntu" )
-        make nmon_x86_ubuntu134
+        make nmon_x86_ubuntu1404
         ;;
     "sles12" )
         make nmon_x86_sles12

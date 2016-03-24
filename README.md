@@ -18,8 +18,8 @@ The project also hosts binary releases for supported linux distributions: Ubuntu
 ## Download [binary release](https://github.com/axibase/nmon/releases) :
 
 ```
-curl -OL https://github.com/axibase/nmon/releases/download/16d/nmon_x86_ubuntu134
-chmod +x nmon_x86_ubuntu134
+curl -OL https://github.com/axibase/nmon/releases/download/16d/nmon_x86_ubuntu
+chmod +x nmon_x86_ubuntu
 ```
 
 ## Build
