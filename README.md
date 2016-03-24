@@ -55,7 +55,7 @@ rm nmon
 
 * Put one of the following examples to ```/opt/nmon/nmon_script.sh```
 
-> **Note:** TMake sure that ```/opt/nmon/nmon``` binary is exist and executable.
+> **Note:** Make sure that ```/opt/nmon/nmon``` binary is exist and executable.
 
 
 
