@@ -6,20 +6,29 @@
 
  
 
-This fork displays steal time in both console (interactive) and file mode which is relevant for monitoring micro-partitioned virtual machines entitled to fractional CPU cores which is the case with AWS micro/small EC2 instances.
+This fork fixes some of the issues in the original ```makefile```. 
+The project also hosts binary releases for supported linux distributions: Ubuntu, Debian, RedHat, CentOS, SLES. The binaries can be downloaded from [nmon release page](https://github.com/axibase/nmon/releases)
 
  
 
 ![CPU steal time, collected with nmon](https://www.axibase.com/images/nmon_stolen_cpu.png)
 
-# Install
+# Installation
+
+## Download [binary release](https://github.com/axibase/nmon/releases) :
+
+```
+curl -OL https://github.com/axibase/nmon/releases/download/16d/nmon_x86_ubuntu134
+chmod +x nmon_x86_ubuntu134
+```
+
+## Build
+
 Download the latest version using git clone command:
 
 ```bash
 git clone git://github.com/axibase/nmon.git
 ```
-
-Or download an [nmon release](https://github.com/axibase/nmon/releases) from the site or Github.
 
 To download a specific branch use the following command:
 
@@ -27,25 +36,50 @@ To download a specific branch use the following command:
 git clone git://github.com/axibase/nmon.git -b 16d
 ```
 
-After this, you should enter the nmon sources directory and execute build.sh script to compile nmon ( on Debian, Ubuntu, Red Hat or Cent OS distributive ), or use 'make' utility to compile nmon from sources.
+Change to the nmon source directory and execute build.sh script to compile nmon.
+
 
 ```bash
 cd nmon
 ./build.sh
 ```
 
-If compilation was successful, you should have an nmon file in the current directory.
+Alternatively, launch 'make' utility to compile nmon from sources for your distribution:
 
-You can now execute command-line tool by invoking ./nmon_{yourDistributive}. 
-
-# Unistall
-Just remove nmon binary file:
-
-```bash
-rm nmon
+```
+make nmon_arm_raspian
 ```
 
-# Simple sender examples
+
+If compilation was successful, an nmon file will be created in the current directory.
+
+You can now launch nmon by typing ```./nmon_{yourDistribution}```. 
+
+# Unistall
+Remove nmon binary file:
+
+```bash
+rm nmon_{yourDistribution}
+```
+
+# Usage Examples
+
+> **Note:** Make sure that ```/opt/nmon/nmon``` binary is exist and executable.
+
+## Launch Nmon Console
+
+```
+/opt/nmon/nmon
+```
+
+## Collect Nmon Files Locally
+
+```
+0 * * * * /opt/nmon/nmon -f /opt/nmon/ -s 60 -c 60 -T
+```
+
+## Upload Hourly Files to ATSD with wget
+
 
 * Create a file ```/opt/nmon/nmon_script.sh``` and add it to the cron schedule:
 
@@ -53,16 +87,8 @@ rm nmon
 0 * * * * /opt/nmon/nmon_script.sh
 ```
 
-* Put one of the following examples to ```/opt/nmon/nmon_script.sh```
-
-> **Note:** Make sure that ```/opt/nmon/nmon``` binary is exist and executable.
-
-
-
-
-## Send by ```wget```
-
-
+* Put the following code to ```/opt/nmon/nmon_script.sh```:
+> **Note:** Replace ```atsd_user, atsd_password, atsd_server``` with your real credentials.
 
 ```bash
 #!/bin/sh
@@ -72,7 +98,17 @@ wget -t 1 -T 10 --user=atsd_user --password=atsd_password --no-check-certificate
 --header="Content-type: text/csv" "https://atsd_server/api/v1/nmon?f=`basename $fn`"
 ```
 
-## Send by ```unix socket``` ( ```bash``` is required ):
+## Upload Hourly Files to ATSD with UNIX Socket ( ```Bash required``` )
+
+
+* Create a file ```/opt/nmon/nmon_script.sh``` and add it to the cron schedule:
+
+```
+0 * * * * /opt/nmon/nmon_script.sh
+```
+
+* Put the following code to ```/opt/nmon/nmon_script.sh```:
+> **Note:** Replace ```atsd_server``` with your real server name or address.
 
 ```bash
 #!/bin/bash
@@ -81,7 +117,9 @@ while kill -0 $pd; do sleep 15; done; \
 { echo "nmon p:default e:`hostname` f:`hostname`_file.nmon"; cat $fn; } > /dev/tcp/atsd_server/8081
 ```
 
-## Send by ```nc``` util:
+
+## Upload Hourly Files to ATSD with nc 
+> **Note:** Replace ```atsd_server``` with your real server name or address.
 
 ```bash
 #!/bin/sh
