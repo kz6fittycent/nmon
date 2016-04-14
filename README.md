@@ -1,8 +1,8 @@
-##nmon for Linux
+## nmon for Linux
+
 [![Build Status](https://travis-ci.org/axibase/nmon.svg)](https://travis-ci.org/axibase/nmon)
  
-
-According to http://nmon.sourceforge.net/pmwiki.php, nmon is "... systems administrator, tuner, benchmark tool gives you a huge amount of important performance information in one go.".
+Nmon is "... [systems administrator, tuner, benchmark tool gives you a huge amount of important performance information in one go.](http://nmon.sourceforge.net/pmwiki.php)".
 
 This fork fixes some of the issues in the original ```makefile```. 
 The project also hosts binary releases for selected Linux distributions: Ubuntu/Debian, RedHat. The binaries can be downloaded from [nmon release page](https://github.com/axibase/nmon/releases)
@@ -51,7 +51,8 @@ If compilation was successful, an nmon file will be created in the current direc
 
 You can now launch nmon by typing ```./nmon_{yourDistribution}```. 
 
-# Unistall
+# Uninstall
+
 Remove nmon binary file:
 
 ```bash
