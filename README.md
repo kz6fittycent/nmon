@@ -1,16 +1,12 @@
-##nmon for Linux
+## nmon for Linux
+
 [![Build Status](https://travis-ci.org/axibase/nmon.svg)](https://travis-ci.org/axibase/nmon)
  
-
-"... systems administrator, tuner, benchmark tool gives you a huge amount of important performance information in one go.", according to http://nmon.sourceforge.net/pmwiki.php
-
- 
+Nmon is "... [systems administrator, tuner, benchmark tool gives you a huge amount of important performance information in one go.](http://nmon.sourceforge.net/pmwiki.php)".
 
 This fork fixes some of the issues in the original ```makefile```. 
-The project also hosts binary releases for supported linux distributions: Ubuntu, Debian, RedHat, CentOS, SLES. The binaries can be downloaded from [nmon release page](https://github.com/axibase/nmon/releases)
-1
+The project also hosts binary releases for selected Linux distributions: Ubuntu/Debian, RedHat. The binaries can be downloaded from [nmon release page](https://github.com/axibase/nmon/releases)
  
-1
 [![Chartlab Portal](https://axibase.com/wp-content/uploads/2016/03/nmon.png)](https://apps.axibase.com/chartlab/ac003f06)
 
 # Installation
@@ -30,7 +26,7 @@ Download the latest version using git clone command:
 git clone git://github.com/axibase/nmon.git
 ```
 
-To download a specific branch use the following command:
+Download a specific branch with ```-b``` flag:
 
 ```bash
 git clone git://github.com/axibase/nmon.git -b 16d
@@ -55,7 +51,8 @@ If compilation was successful, an nmon file will be created in the current direc
 
 You can now launch nmon by typing ```./nmon_{yourDistribution}```. 
 
-# Unistall
+# Uninstall
+
 Remove nmon binary file:
 
 ```bash
@@ -64,15 +61,15 @@ rm nmon_{yourDistribution}
 
 # Usage Examples
 
-> **Note:** Make sure that ```/opt/nmon/nmon``` binary is exist and executable.
+> **Note:** Make sure that ```/opt/nmon/nmon``` binary exists and is executable.
 
-## Launch Nmon Console
+## Launch nmon Console
 
 ```
 /opt/nmon/nmon
 ```
 
-## Collect Nmon Files Locally
+## Collect nmon Files Locally
 
 * Add the following row to your cron schedule:
 
@@ -89,9 +86,9 @@ rm nmon_{yourDistribution}
 0 * * * * /opt/nmon/nmon_script.sh
 ```
 
-* Put the following code to ```/opt/nmon/nmon_script.sh```:
+* ```/opt/nmon/nmon_script.sh``` contents:
 
-> **Note:** Replace ```atsd_user, atsd_password, atsd_server``` with your real credentials.
+> **Note:** Replace ```atsd_user, atsd_password, atsd_server``` with actual credentials:
 
 ```bash
 #!/bin/sh
@@ -111,9 +108,9 @@ wget -t 1 -T 10 --user=atsd_user --password=atsd_password --no-check-certificate
 0 * * * * /opt/nmon/nmon_script.sh
 ```
 
-* Put the following code to ```/opt/nmon/nmon_script.sh```:
+* ```/opt/nmon/nmon_script.sh``` contents:
 
-> **Note:** Replace ```atsd_server``` with your real server name or address.
+> **Note:** Replace ```atsd_server``` with ATSD hostname or IP address.
 
 ```bash
 #!/bin/bash
@@ -123,7 +120,7 @@ while kill -0 $pd; do sleep 15; done; \
 ```
 
 
-## Upload Hourly Files to ATSD with nc 
+## Upload Hourly Files to ATSD with netcat 
 
 * Create a file ```/opt/nmon/nmon_script.sh``` and add the following row to your cron schedule:
 
@@ -131,9 +128,9 @@ while kill -0 $pd; do sleep 15; done; \
 0 * * * * /opt/nmon/nmon_script.sh
 ```
 
-* Put the following code to ```/opt/nmon/nmon_script.sh```:
+* ```/opt/nmon/nmon_script.sh``` contents:
 
-> **Note:** Replace ```atsd_server``` with your real server name or address.
+> **Note:** Replace ```atsd_server``` with ATSD hostname or IP address.
 
 ```bash
 #!/bin/sh
