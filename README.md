@@ -55,7 +55,8 @@ If compilation was successful, an nmon file will be created in the current direc
 
 You can now launch nmon by typing ```./nmon_{yourDistribution}```. 
 
-# Unistall
+# Uninstall
+
 Remove nmon binary file:
 
 ```bash
