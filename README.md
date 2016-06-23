@@ -1,5 +1,5 @@
 ##nmon for Linux
-[![Build Status](https://travis-ci.org/axibase/nmon.svg)](https://travis-ci.org/axibase/nmon)
+[![Build Status](https://travis-ci.org/axibase/nmon.svg?branch=16d)](https://travis-ci.org/axibase/nmon)
  
 
 "... systems administrator, tuner, benchmark tool gives you a huge amount of important performance information in one go.", according to http://nmon.sourceforge.net/pmwiki.php
