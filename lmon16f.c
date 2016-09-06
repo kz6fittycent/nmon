@@ -48,7 +48,7 @@ KERNEL_2_6_18 1 kernel level and above adds the following to the disk stats
 #define RAW(member)      (long)((long)(p->cpuN[i].member)   - (long)(q->cpuN[i].member))
 #define RAWTOTAL(member) (long)((long)(p->cpu_total.member) - (long)(q->cpu_total.member))
 
-#define VERSION "16e"
+#define VERSION "16f"
 char version[] = VERSION;
 static char *SccsId = "nmon " VERSION;
 
@@ -721,10 +721,10 @@ int cores = 0;
 int siblings = 0;
 int processorchips = 0;
 int hyperthreads = 0;
-char *vendor_ptr = "-";
-char *model_ptr = "-";
-char *mhz_ptr = "-";
-char *bogo_ptr = "-";
+char *vendor_ptr = "not-set";
+char *model_ptr = "not-set";
+char *mhz_ptr = "not-set";
+char *bogo_ptr = "not-set";
 #endif
 int old_cpus = 1;		/* Number of CPU seen in previuos interval */
 int max_cpus = 1;		/* highest number of CPUs in DLPAR */
@@ -830,7 +830,7 @@ void find_release()
 {
     FILE *pop;
     int i;
-    char tmpstr[71];
+    char tmpstr[1024+1];
 
 #ifdef SLES12
     pop = popen("cat /etc/os-release 2>/dev/null", "r");
@@ -840,7 +840,7 @@ void find_release()
     if (pop != NULL) {
 	tmpstr[0] = 0;
 	for (i = 0; i < 4; i++) {
-	    if (fgets(tmpstr, 70, pop) == NULL)
+	    if (fgets(tmpstr, 1024, pop) == NULL)
 		break;
 	    tmpstr[strlen(tmpstr) - 1] = 0;	/* remove newline */
 	    easy[i] = MALLOC(strlen(tmpstr) + 1);
@@ -1785,7 +1785,8 @@ void get_intel_spec()
 	}
     }
     for (i = 0; i < proc[P_CPUINFO].lines; i++) {
-	if (strncmp("bogomips", proc[P_CPUINFO].line[i], 8) == 0) {
+	if((strncmp("bogomips", proc[P_CPUINFO].line[i], 8) == 0) ||
+	   (strncmp("bogoMIPS", proc[P_CPUINFO].line[i], 8) == 0)){
 	    bogo_ptr = &proc[P_CPUINFO].line[i][11];
 	}
     }
@@ -4355,6 +4356,24 @@ int main(int argc, char **argv)
     float min_mhz;
     float max_mhz;
     float avg_mhz = 0.0;
+    unsigned long topsize;
+    char topsize_ch;
+    unsigned long toprset;
+    char toprset_ch;
+    unsigned long toptrs;
+    char toptrs_ch;
+    unsigned long topdrs;
+    char topdrs_ch;
+    unsigned long toplrs;
+    char toplrs_ch;
+    unsigned long topshare;
+    char topshare_ch;
+    unsigned long toprio;
+    char toprio_ch;
+    unsigned long topwio;
+    char topwio_ch;
+	
+    char truncated_command[257]; /* 256 +1 */
 
 
 #define MAXROWS 256
@@ -5306,15 +5325,43 @@ mvwprintw(padwelcome,x+8, 3, "------------------------------");
 #endif /*MAINFRAME */
 #if X86 || ARM
 		get_cpu_cnt();
+		lscpu_init();
+#ifdef RHEL7
+		mvwprintw(padwelcome, x + 8, 3, "%s %s", easy[0], easy[1]);
+#else 
+#ifdef RHEL6
+		mvwprintw(padwelcome, x + 8, 3, "%s", easy[1]);
+#else
+#ifdef SLES113
+		mvwprintw(padwelcome, x + 8, 3, "%s %s %s", easy[1], easy[2], easy[3]);
+#else
+#ifdef UBUNTU
+		mvwprintw(padwelcome, x + 8, 3, "%s %s %s", easy[0], easy[1], easy[2]);
+#else
 		mvwprintw(padwelcome, x + 8, 3, "%s %s", easy[0], easy[2]);
-		mvwprintw(padwelcome, x + 9, 3, "%s %s", vendor_ptr,
-			  model_ptr);
+#endif /*UBUNTU */
+#endif /*SLES113 */
+#endif /*RHEL6 */
+#endif /*RHEL7 */
+		mvwprintw(padwelcome, x + 9, 3, "Vendor=%s Model=%s", 
+			vendor_ptr, model_ptr);
 		mvwprintw(padwelcome, x + 10, 3, "MHz=%s bogomips=%s",
 			  mhz_ptr, bogo_ptr);
 		if (processorchips || cores || hyperthreads || cpus) {
-		    mvwprintw(padwelcome, x + 11, 3, "ProcessorChips=%d PhyscalCores=%d", processorchips, cores);
-		    mvwprintw(padwelcome, x + 12, 3, "Hyperthreads  =%d VirtualCPUs =%d", hyperthreads, cpus);
+		    if(processorchips != 0) 
+			mvwprintw(padwelcome, x + 11, 3, "ProcessorChips=%d", processorchips);
+		    if(cores != 0) 
+		    mvwprintw(padwelcome, x + 11, 20, "PhyscalCores=%d", cores);
+		    if(hyperthreads!= 0) 
+		    mvwprintw(padwelcome, x + 12, 3, "Hyperthreads  =%d", hyperthreads);
+		    if(cpus != 0) 
+		    mvwprintw(padwelcome, x + 12, 20, "VirtualCPUs =%d", cpus);
 		}
+		    mvwprintw(padwelcome, x + 10, 42, "lscpu:CPU=%d %s", lscpu.cpus, lscpu.byte_order);
+		    mvwprintw(padwelcome, x + 11, 42, "      Sockets=%d Cores=%d Thrds=%d", lscpu.sockets, lscpu.cores, lscpu.threads);
+		    mvwprintw(padwelcome, x + 12, 42, "      MHz=%d max=%d min=%d", lscpu.mhz, lscpu.mhz_max, lscpu.mhz_min);
+
+	
 #endif
 		COLOUR wattrset(padwelcome, COLOR_PAIR(0));
 		mvwprintw(padwelcome, x + 14, 3,
@@ -5471,7 +5518,7 @@ mvwprintw(padwelcome,x+8, 3, "------------------------------");
 		      proc[P_CPUINFO].line[4]);
 #else				/* MAINFRAME */
 #if X86 || ARM
-	    mvwprintw(padres, 5, 4, "cpuinfo: %s %s", vendor_ptr,
+	    mvwprintw(padres, 5, 4, "cpuinfo: Vendor=%s Model=%s", vendor_ptr,
 		      model_ptr);
 	    mvwprintw(padres, 6, 4, "cpuinfo: Hz=%s bogomips=%s", mhz_ptr,
 		      bogo_ptr);
@@ -7664,7 +7711,7 @@ I/F Name Recv=KB/s Trans=KB/s packin packout insize outsize Peak->Recv Trans
 			mvwprintw(paddisk, 1, 25, "Write");
 			COLOUR wattrset(paddisk, COLOR_PAIR(0));
 			mvwprintw(paddisk, 1, 37,
-				  "Xfers   Size  Peak%%  Peak-RW    InFlight ");
+				  "Xfers   Size  Peak%%  Peak=R+W    InFlight ");
 			break;
 		    case SHOW_DISK_GRAPH:
 			mvwprintw(paddisk, 1, 0, "DiskName Busy  ");
@@ -7742,16 +7789,19 @@ I/F Name Recv=KB/s Trans=KB/s packin packout insize outsize Peak->Recv Trans
 			    COLOUR wattrset(paddisk, COLOR_PAIR(3));
 			    mvwprintw(paddisk, 2 + k, 22, "%9.1fKB/s",
 				      disk_write);
+			    COLOUR wattrset(paddisk, COLOR_PAIR(5));
+			    mvwprintw(paddisk, 2 + k, 36, "%6.1f", disk_xfers / elapsed);
+			    COLOUR wattrset(paddisk, COLOR_PAIR(4));
+			    mvwprintw(paddisk, 2 + k, 43, "%5.1fKB",
+				      disk_xfers == 0.0 ? 0.0 : (DKDELTA(dk_rkb) + DKDELTA(dk_wkb)) / disk_xfers); 
+			    COLOUR wattrset(paddisk, COLOR_PAIR(2));
+			    mvwprintw(paddisk, 2 + k, 52,
+				      "%3.0f%% %9.1fKB/s",
+				      disk_busy_peak[i],
+				      disk_rate_peak[i]);
+			    COLOUR wattrset(paddisk, COLOR_PAIR(3));
+			    mvwprintw(paddisk, 2 + k, 70, "%3d", p->dk[i].dk_inflight);
 			    COLOUR wattrset(paddisk, COLOR_PAIR(0));
-			    mvwprintw(paddisk, 2 + k, 31,
-				      "KB/s %6.1f %5.1fKB  %3.0f%% %9.1fKB/s %3d",
-				      disk_xfers / elapsed,
-				      disk_xfers ==
-				      0.0 ? 0.0 : (DKDELTA(dk_rkb) +
-						   DKDELTA(dk_wkb)) /
-				      disk_xfers, disk_busy_peak[i],
-				      disk_rate_peak[i],
-				      p->dk[i].dk_inflight);
 			    k++;
 			}
 			if (show_disk == SHOW_DISK_GRAPH) {
@@ -8288,23 +8338,21 @@ I/F Name Recv=KB/s Trans=KB/s packin packout insize outsize Peak->Recv Trans
 	    }
 	    CURSE BANNER(padtop, "Top Processes");
 	    if (isroot) {
-		CURSE mvwprintw(padtop, 0, 15,
-				"Procs=%d mode=%d (1=Basic, 3=Perf 4=Size 5=I/O)",
-				n, show_topmode);
+		formatstring = "Procs=%d-mode=%d-1=Base 3=Perf 4=Size 5=I/O u=Args";
 	    } else {
-		CURSE mvwprintw(padtop, 0, 15,
-				"Procs=%d mode=%d (1=Basic, 3=Perf 4=Size 5=I/O[root-only])",
-				n, show_topmode);
-	    }
+		formatstring = "Procs=%d-mode=%d-1=Base 3=Perf 4=Size 5=I/O[RootOnly] u=Args";
+	   }
+	    CURSE mvwprintw(padtop, 0, 15, formatstring, p->processes, show_topmode);
 	    if (cursed && top_first_time) {
 		top_first_time = 0;
 		mvwprintw(padtop, 1, 1,
 			  "Please wait - information being collected");
 	    } else {
 		switch (show_topmode) {
-		case 1:
-		    CURSE mvwprintw(padtop, 1, 1,
-				    "  PID      PPID  Pgrp Nice Prior Status    proc-Flag Command");
+		case 1:   /* Basic */
+		    if(cursed) {
+		    mvwprintw(padtop, 1, 1,
+				    "  PID      PPID  Pgrp Nice Prior Status     Proc-Flag   Command");
 		    for (j = 0; j < max_sorted; j++) {
 			i = topper[j].index;
 			if (p->procs[i].pi_pgrp == p->procs[i].pi_pid)
@@ -8318,19 +8366,32 @@ I/F Name Recv=KB/s Trans=KB/s packin packout insize outsize Peak->Recv Trans
 			    break;
 			if (x + j + 2 - skipped > LINES + 2)	/* +2 to for safety :-) */
 			    break;
-			CURSE mvwprintw(padtop, j + 2 - skipped, 1,
-					"%7d %7d %6s %4d %4d %9s 0x%08x %1s %-32s",
+			mvwprintw(padtop, j + 2 - skipped, 1, "%7d %7d %6s",
 					p->procs[i].pi_pid,
-					p->procs[i].pi_ppid, pgrp,
+					p->procs[i].pi_ppid, 
+					pgrp);
+			COLOUR wattrset(padtop, COLOR_PAIR(5));
+			mvwprintw(padtop, j + 2 - skipped, 24, "%4d %4d",
 					p->procs[i].pi_nice,
-					p->procs[i].pi_pri,
-					(topper[j].time * 100 /
-					 elapsed) ? "Running " :
-					get_state(p->procs[i].pi_state),
-					p->procs[i].pi_flags,
-					(p->procs[i].
-					 pi_tty_nr ? "F" : " "),
-					p->procs[i].pi_comm);
+					p->procs[i].pi_pri);
+			if (topper[j].time * 100 / elapsed) {
+				COLOUR wattrset(padtop, COLOR_PAIR(1));
+			} else {
+				COLOUR wattrset(padtop, COLOR_PAIR(2));
+			}
+			mvwprintw(padtop, j + 2 - skipped, 35, "%9s",
+					(topper[j].time * 100 / elapsed) ? "Running " : get_state(p->procs[i].pi_state));
+
+			COLOUR wattrset(padtop, COLOR_PAIR(6));
+			mvwprintw(padtop, j + 2 - skipped, 45, "0x%08x",
+					p->procs[i].pi_flags);
+			COLOUR wattrset(padtop, COLOR_PAIR(1));
+			mvwprintw(padtop, j + 2 - skipped, 54, "%1s",
+					(p->procs[i].pi_tty_nr ? "F" : " "));
+			COLOUR wattrset(padtop, COLOR_PAIR(3));
+			mvwprintw(padtop, j + 2 - skipped, 57, "%-32s", p->procs[i].pi_comm);
+			COLOUR wattrset(padtop, COLOR_PAIR(0));
+			}
 		    }
 		    break;
 		case 3:
@@ -8339,14 +8400,14 @@ I/F Name Recv=KB/s Trans=KB/s packin packout insize outsize Peak->Recv Trans
 
 		    if (show_args == ARGS_ONLY) {
 			formatstring =
-			    "  PID    %%CPU ResSize    Command                                            ";
+			    "  PID    %%CPU   ResSize Command                                            ";
 		    } else if (COLS > 119) {
 			if (show_topmode == 5)
 			    formatstring =
-				"  PID       %%CPU    Size     Res    Res     Res     Res    Shared   StorageKB Command";
+				"  PID        %%CPU      Size       Res      Res       Res       Res      Shared       StorageKB  Command";
 			else
 			    formatstring =
-				"  PID       %%CPU    Size     Res    Res     Res     Res    Shared    Faults   Command";
+				"  PID        %%CPU      Size       Res      Res       Res       Res      Shared   Faults   Faults Command";
 		    } else {
 			if (show_topmode == 5)
 			    formatstring =
@@ -8359,14 +8420,14 @@ I/F Name Recv=KB/s Trans=KB/s packin packout insize outsize Peak->Recv Trans
 
 		    if (show_args == ARGS_ONLY) {
 			formatstring =
-			    "         Used      KB                                                        ";
+			    "         Used       KB                                                       ";
 		    } else if (COLS > 119) {
 			if (show_topmode == 5)
 			    formatstring =
-				"            Used      KB     Set    Text    Data     Lib    KB    Read Write";
+				"             Used        KB       Set      Text      Data       Lib        KB      Read   Write";
 			else
 			    formatstring =
-				"            Used      KB     Set    Text    Data     Lib    KB     Min   Maj";
+				"             Used        KB       Set      Text      Data       Lib        KB      Min      Maj";
 		    } else {
 			if (show_topmode == 5)
 			    formatstring =
@@ -8397,33 +8458,137 @@ I/F Name Recv=KB/s Trans=KB/s packin packout insize outsize Peak->Recv Trans
 				continue;
 			    }
 			    if (show_args == ARGS_ONLY) {
-				mvwprintw(padtop, j + 3 - skipped, 1, "%7d %5.1f %7lu %-120s", p->procs[i].pi_pid, topper[j].time / elapsed, p->procs[i].statm_resident * pagesize / 1024,	/* in KB */
-					  args_lookup(p->procs[i].pi_pid,
-						      p->procs[i].
-						      pi_comm));
-			    } else {
-				if (COLS > 119)
-				    formatstring =
-					"%8d %7.1f %7lu %7lu %7lu %7lu %7lu %5lu %6d %6d %-32s";
-				else
-				    formatstring =
-					"%7d %5.1f %5lu %5lu %5lu %5lu %5lu %5lu %4d %4d %-32s";
 
-				mvwprintw(padtop, j + 3 - skipped, 1,
-					  formatstring, p->procs[i].pi_pid,
-					  topper[j].time / elapsed,
-					  /* topper[j].time /1000.0 / elapsed, */
-					  p->procs[i].statm_size * pagesize / 1024UL,	/* in KB */
-					  p->procs[i].statm_resident * pagesize / 1024UL,	/* in KB */
-					  p->procs[i].statm_trs * pagesize / 1024UL,	/* in KB */
-					  p->procs[i].statm_drs * pagesize / 1024UL,	/* in KB */
-					  p->procs[i].statm_lrs * pagesize / 1024UL,	/* in KB */
-					  p->procs[i].statm_share * pagesize / 1024UL,	/* in KB */
-					  show_topmode ==
-					  5 ? (int) (COUNTDELTA(read_io) / elapsed / 1024) : (int) (COUNTDELTA(pi_minflt) / elapsed),
-					  show_topmode ==
-					  5 ? (int) (COUNTDELTA(write_io) / elapsed / 1024) : (int) (COUNTDELTA(pi_majflt) / elapsed),
-					  p->procs[i].pi_comm);
+				mvwprintw(padtop, j + 3 - skipped, 1, "%7d", p->procs[i].pi_pid);
+			        COLOUR wattrset(padtop, COLOR_PAIR(1));
+				mvwprintw(padtop, j + 3 - skipped, 9, "%5.1f", topper[j].time / elapsed);
+			        COLOUR wattrset(padtop, COLOR_PAIR(2));
+				mvwprintw(padtop, j + 3 - skipped, 16, "%7lu", p->procs[i].statm_resident * pagesize / 1024);	/* in KB */
+			        COLOUR wattrset(padtop, COLOR_PAIR(3));
+				strncpy( truncated_command, args_lookup(p->procs[i].pi_pid, p->procs[i].pi_comm), 256);
+				truncated_command[256] = 0;
+				truncated_command[COLS - 24 - 2] = 0;
+				
+				mvwprintw(padtop, j + 3 - skipped, 24, "%-120s", truncated_command);
+			        COLOUR wattrset(padtop, COLOR_PAIR(0));
+			    } else {
+				topsize = p->procs[i].statm_size * pagesize / 1024UL;		/* in KB */
+				topsize_ch = ' ';
+				toprset = p->procs[i].statm_resident * pagesize / 1024UL;	/* in KB */
+				toprset_ch = ' ';
+				toptrs = p->procs[i].statm_trs * pagesize / 1024UL;		/* in KB */
+				toptrs_ch = ' ';
+				topdrs = p->procs[i].statm_drs * pagesize / 1024UL;		/* in KB */
+				topdrs_ch = ' ';
+				toplrs = p->procs[i].statm_lrs * pagesize / 1024UL;		/* in KB */
+				toplrs_ch = ' ';
+				topshare = p->procs[i].statm_share * pagesize / 1024UL;		/* in KB */
+				topshare_ch = ' ';
+				toprio = (int) (COUNTDELTA(read_io) / elapsed / 1024);
+				toprio_ch = ' ';
+				topwio = (int) (COUNTDELTA(write_io) / elapsed / 1024);
+				topwio_ch = ' ';
+/*
+				if (COLS > 119) 
+				    formatstring = "%8d %8.1f %9lu%c%9lu%c%9lu%c%9lu%c%9lu%c%9lu%c%8d%c%8d%c%-32s"; 
+				else  {
+				    formatstring = "%7d %5.1f %5lu%c%5lu%c%5lu%c%5lu%c%5lu%c%5lu%c%4d%c%4d%c%-32s";
+*/
+				if (COLS < 119) {
+				    if(topsize > 99999UL) {
+					topsize = topsize / 1024UL;
+					topsize_ch = 'm';
+				    }
+				    if(toprset > 99999UL) {
+					toprset = toprset / 1024UL;
+					toprset_ch = 'm';
+				    }
+				    if(toptrs > 99999UL) {
+					toptrs = toptrs / 1024UL;
+					toptrs_ch = 'm';
+				    }
+				    if(topdrs > 99999UL) {
+					topdrs = topdrs / 1024UL;
+					topdrs_ch = 'm';
+				    }
+				    if(toptrs > 99999UL) {
+					toplrs = toplrs / 1024UL;
+					toplrs_ch = 'm';
+				    }
+				    if(toptrs > 99999UL) {
+					topshare = topshare / 1024UL;
+					topshare_ch = 'm';
+				    }
+				    if(toprio > 99999UL) {
+					toprio = toprio / 1024UL;
+					topwio_ch = 'm';
+				    }
+				    if(topwio > 99999UL) {
+					topwio = topwio / 1024UL;
+					topwio_ch = 'm';
+				    }
+					/* now repeat incase we get many tens of GB sizes */
+				    if(topsize > 99999UL) {
+					topsize = topsize / 1024UL;
+					topsize_ch = 'g';
+				    }
+				    if(toprset > 99999UL) {
+					toprset = toprset / 1024UL;
+					toprset_ch = 'g';
+				    }
+				    if(toptrs > 99999UL) {
+					toptrs = toptrs / 1024UL;
+					toptrs_ch = 'g';
+				    }
+				    if(topdrs > 99999UL) {
+					topdrs = topdrs / 1024UL;
+					topdrs_ch = 'g';
+				    }
+				    if(toptrs > 99999UL) {
+					toplrs = toplrs / 1024UL;
+					toplrs_ch = 'g';
+				    }
+				    if(toptrs > 99999UL) {
+					topshare = topshare / 1024UL;
+					topshare_ch = 'g';
+				    }
+				    if(toprio > 99999UL) {
+					toprio = toprio / 1024UL;
+					topwio_ch = 'g';
+				    }
+				    if(topwio > 99999UL) {
+					topwio = topwio / 1024UL;
+					topwio_ch = 'g';
+				    }
+				}
+
+				mvwprintw(padtop, j + 3 - skipped, 1,                (COLS>119)?"%8d":"%7d",     p->procs[i].pi_pid);
+
+			        COLOUR wattrset(padtop, COLOR_PAIR(1));
+				mvwprintw(padtop, j + 3 - skipped, (COLS >119)?10:9, (COLS>119)?"%8.1f":"%5.1f", topper[j].time / elapsed);
+
+			        COLOUR wattrset(padtop, COLOR_PAIR(2));
+				mvwprintw(padtop, j + 3 - skipped, (COLS >119)?19:15, 
+						(COLS>119)?"%9lu%c%9lu%c%9lu%c%9lu%c%9lu%c%9lu%c":"%5lu%c%5lu%c%5lu%c%5lu%c%5lu%c%5lu%c", 
+					  topsize, topsize_ch,
+					  toprset, toprset_ch,
+					  toptrs, toptrs_ch,
+					  topdrs, topdrs_ch,
+					  toplrs, toplrs_ch,
+					  topshare, topshare_ch);
+
+				if(show_topmode == 5) {
+			        COLOUR wattrset(padtop, COLOR_PAIR(5));
+				mvwprintw(padtop, j + 3 - skipped, (COLS >119)?79:51, (COLS>119)?"%8d%c%8d%c":"%4d%c%4d%c", 
+										(int)toprio, toprio_ch, (int)topwio, topwio_ch);
+				} else {
+			        COLOUR wattrset(padtop, COLOR_PAIR(6));
+				mvwprintw(padtop, j + 3 - skipped, (COLS >119)?79:51, (COLS>119)?"%8d %8d":"%4d %4d", 
+					  (int) (COUNTDELTA(pi_minflt) / elapsed), (int) (COUNTDELTA(pi_majflt) / elapsed) );
+				}
+			        COLOUR wattrset(padtop, COLOR_PAIR(3));
+				mvwprintw(padtop, j + 3 - skipped, (COLS >119)?97:61, "%-32s", p->procs[i].pi_comm);
+			        COLOUR wattrset(padtop, COLOR_PAIR(0));
 			    }
 			} else {
 			    if ((cmdfound && cmdcheck(p->procs[i].pi_comm))
