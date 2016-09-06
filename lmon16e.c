@@ -2,6 +2,20 @@
  * lmon.c -- Curses based Performance Monitor for Linux
  * with saving performance stats to a CSV file mode.
  * Developer: Nigel Griffiths. 
+ * (C) Copyright 2009 Nigel Griffiths
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 /*
@@ -34,7 +48,7 @@ KERNEL_2_6_18 1 kernel level and above adds the following to the disk stats
 #define RAW(member)      (long)((long)(p->cpuN[i].member)   - (long)(q->cpuN[i].member))
 #define RAWTOTAL(member) (long)((long)(p->cpu_total.member) - (long)(q->cpu_total.member))
 
-#define VERSION "16d"
+#define VERSION "16e"
 char version[] = VERSION;
 static char *SccsId = "nmon " VERSION;
 
@@ -1018,6 +1032,9 @@ void linux_bbbp(char *name, char *cmd, char *err)
 /* Global name of programme for printing it */
 char *progname;
 
+/* Seconds since epoc and the sting version */
+long long boottime = 0;
+char boottime_str[64] = "not found";
 /* Main data structure for collected stats.
  * Two versions are previous and current data.
  * Often its the difference that is printed.
@@ -1038,7 +1055,6 @@ struct cpu_stat {		/* changed the order here to match this years kernel (man 5 /
     /* below are non-cpu based numbers in the same file */
     long long intr;
     long long ctxt;
-    long long btime;
     long long procs;
     long long running;
     long long blocked;
@@ -1557,7 +1573,8 @@ struct data {
     double time;
     struct procsinfo *procs;
 
-    int nprocs;
+    int proc_records;
+    int processes;
 } database[2], *p, *q;
 
 
@@ -1653,6 +1670,7 @@ int read_vmstat()
 #define IFNAME 64
 
 #define TIMEDELTA(member,index1,index2) ((p->procs[index1].member) - (q->procs[index2].member))
+#define IODELTA(member,index1,index2) ( (q->procs[index2].member > p->procs[index1].member) ? 0 : (p->procs[index1].member - q->procs[index2].member) )
 #define COUNTDELTA(member) ( (q->procs[topper[j].other].member > p->procs[i].member) ? 0 : (p->procs[i].member  - q->procs[topper[j].other].member) )
 
 #define TIMED(member) ((double)(p->procs[i].member.tv_sec))
@@ -1954,7 +1972,6 @@ void proc_cpu()
     }
     p->cpu_total.intr = -1;
     p->cpu_total.ctxt = -1;
-    p->cpu_total.btime = -1;
     p->cpu_total.procs = -1;
     p->cpu_total.running = -1;
     p->cpu_total.blocked = -1;
@@ -1964,9 +1981,13 @@ void proc_cpu()
     if (proc[P_STAT].lines >= ctxt_line)
 	sscanf(&proc[P_STAT].line[ctxt_line][0], "ctxt %lld",
 	       &p->cpu_total.ctxt);
-    if (proc[P_STAT].lines >= btime_line)
-	sscanf(&proc[P_STAT].line[btime_line][0], "btime %lld",
-	       &p->cpu_total.btime);
+    if(boottime == 0) {
+	struct tm ts;
+	if (proc[P_STAT].lines >= btime_line)
+	sscanf(&proc[P_STAT].line[btime_line][0], "btime %lld", &boottime);
+	ts = *localtime((time_t *)&boottime);
+	strftime (boottime_str, 64, "%I:%M %p %d-%b-%Y", &ts);
+    }
     if (proc[P_STAT].lines >= proc_line)
 	sscanf(&proc[P_STAT].line[proc_line][0], "processes %lld",
 	       &p->cpu_total.procs);
@@ -3395,9 +3416,9 @@ void help(void)
 	("\t    The nmon Analyser will automatically do its best to graph the data on a new Tab sheet\n");
     printf("\n");
     printf
-	("\tDeveloper: Nigel Griffiths     See http://nmon.sourceforge.net\n");
+	("\tDeveloper: Nigel Griffiths      See http://nmon.sourceforge.net\n");
     printf("\tFeedback welcome - On the current release only\n");
-    printf("\tNo warranty given or implied. Copyright GPLv3\n");
+    printf("\tNo warranty given or implied. (C) Copyright 2009 Nigel Griffiths GPLv3\n");
     exit(0);
 }
 
@@ -3593,9 +3614,12 @@ int checkinput(void)
 			show_all = 0;
 		    else {
 			show_all = 1;
+/* Switching to Nigel's favourite view is confusing to others
+	so disable this feature.
 			show_disk = SHOW_DISK_STATS;
 			show_top = 1;
 			show_topmode = 3;
+*/
 		    }
 		    wclear(paddisk);
 		    break;
@@ -4108,7 +4132,7 @@ int isnumbers(char *s)
     return 1;
 }
 
-int getprocs(int details)
+int getprocs(int records)
 {
     struct dirent *dent;
     DIR *procdir;
@@ -4120,26 +4144,19 @@ int getprocs(int details)
     }
     while ((char *) (dent = readdir(procdir)) != NULL) {
 	if (dent->d_type == 4) {	/* is this a directlory */
-/* mainframes report 0 = unknown every time !!!!  */
-/*
-		    printf("inode=%d type=%d name=%s\n",
-				dent->d_ino,	
-				dent->d_type,	
-				dent->d_name);
-*/
+	/* mainframes report 0 = unknown every time !!!!  */
 	    if (isnumbers(dent->d_name)) {
-/*			printf("%s pid\n",dent->d_name); */
-		if (details) {
-		    count =
-			count + proc_procsinfo(atoi(dent->d_name), count);
+		if (records != 0) {
+		    /* getting the details mode */
+		    count = count + proc_procsinfo(atoi(dent->d_name), count);
+		    if(count == records) {
+			break;
+		    }
 		} else {
+		    /* just counting the processes mode */
 		    count++;
 		}
 	    }
-/*
-		    else
-			printf("NOT numbers\n");
-*/
 	}
     }
     closedir(procdir);
@@ -4239,6 +4256,8 @@ int main(int argc, char **argv)
     int cpu_sys;
     int cpu_wait;
     int cpu_steal;
+    int current_procs = 0;
+    int adjusted_procs = 0;
     int n = 0;			/* reusable counters */
     int i = 0;
     int j = 0;
@@ -4297,6 +4316,7 @@ int main(int argc, char **argv)
     char *formatstring;
     char user_filename[512];
     char user_filename_set = 0;
+    char using_stdout = 0;
     struct statfs statfs_buffer;
     float fs_size;
     float fs_bsize;
@@ -4643,12 +4663,17 @@ int main(int argc, char **argv)
     for (i = 0; i < max_cpus + 1; i++)
 	cpu_peak[i] = 0.0;
 
-    n = getprocs(0);
-    p->procs = MALLOC(sizeof(struct procsinfo) * n + 8);
-    q->procs = MALLOC(sizeof(struct procsinfo) * n + 8);
-    p->nprocs = q->nprocs = n;
+    current_procs = getprocs(0);
+    adjusted_procs = current_procs + 128; /*allows for more processes */
+    p->procs = MALLOC(sizeof(struct procsinfo) * adjusted_procs);
+    q->procs = MALLOC(sizeof(struct procsinfo) * adjusted_procs);
+    p->proc_records = adjusted_procs;
+    q->proc_records = adjusted_procs;
+    p->processes = 0;
+    q->processes = 0;
 
     /* Initialise the top processes table */
+    topper_size = n;
     topper = MALLOC(sizeof(struct topper) * topper_size);	/* round up */
 
     /* Get Disk Stats. */
@@ -4746,10 +4771,18 @@ int main(int argc, char **argv)
 		    hostname,
 		    tim->tm_year,
 		    tim->tm_mon, tim->tm_mday, tim->tm_hour, tim->tm_min);
-	if ((fp = fopen(str, "w")) == 0) {
-	    perror("nmon: failed to open output file");
-	    printf("nmon: output filename=%s\n", str);
-	    exit(42);
+	if (!strncmp(str, "stdout", 6)) {
+		using_stdout = 1;
+		if ((fp = fdopen(1, "w")) == 0) {
+		    perror("nmon: failed to open standard output");
+		    exit(41);
+		}
+	} else {
+		if ((fp = fopen(str, "w")) == 0) {
+		    perror("nmon: failed to open output file");
+		    printf("nmon: output filename=%s\n", str);
+		    exit(42);
+		}
 	}
 	/* disconnect from terminal */
 	fflush(NULL);
@@ -4760,7 +4793,8 @@ int main(int argc, char **argv)
 	}
 	if (!debug) {
 	    close(0);
-	    close(1);
+	    if(using_stdout == 0)
+		close(1);
 	    close(2);
 	    setpgrp();		/* become process group leader */
 	    signal(SIGHUP, SIG_IGN);	/* ignore hangups */
@@ -4820,6 +4854,7 @@ int main(int argc, char **argv)
 	    fprintf(fp, "AAA,ARM,VirtualCPUs,%d\n", cpus);
 #endif
 	    fprintf(fp, "AAA,proc_stat_variables,%d\n", stat8);
+	    fprintf(fp, "AAA,boottime,%s\n", boottime_str);
 
 	    fprintf(fp,
 		    "AAA,note0, Warning - use the UNIX sort command to order this file before loading into a spreadsheet\n");
@@ -4984,8 +5019,15 @@ int main(int argc, char **argv)
 	linux_bbbp("/proc/net/dev", "/bin/cat /proc/net/dev 2>/dev/null",
 		   WARNING);
 #ifdef POWER
-	linux_bbbp("ppc64_utils - lscfg", "/usr/sbin/lscfg 2>/dev/null",
-		   WARNING);
+	/* PowerKVM useful information */
+	linux_bbbp("/proc/device-tree/host-model",  
+		"/bin/cat /proc/device-tree/host-model 2>/dev/null", WARNING);
+	linux_bbbp("/proc/device-tree/host-serial", 
+		"/bin/cat /proc/device-tree/host-serial 2>/dev/null", WARNING);
+	linux_bbbp("/proc/device-tree/ibm,partition-name", 
+		"/bin/cat /proc/device-tree/ibm,partition-name 2>/dev/null", WARNING);
+
+	linux_bbbp("ppc64_utils - lscfg", "/usr/sbin/lscfg 2>/dev/null", WARNING);
 	linux_bbbp("ppc64_utils - ls-vdev",
 		   "/usr/sbin/ls-vdev 2>/dev/null", WARNING);
 	linux_bbbp("ppc64_utils - ls-veth",
@@ -4997,13 +5039,11 @@ int main(int argc, char **argv)
 	linux_bbbp("ppc64_cpu - smt",
 		   "/usr/sbin/ppc64_cpu --smt 2>/dev/null", WARNING);
 	linux_bbbp("ppc64_cpu - cores",
-		   "/usr/sbin/ppc64_cpu --cores-present 2>/dev/null",
-		   WARNING);
+		   "/usr/sbin/ppc64_cpu --cores-present 2>/dev/null", WARNING);
 	linux_bbbp("ppc64_cpu - DSCR",
 		   "/usr/sbin/ppc64_cpu --dscr 2>/dev/null", WARNING);
 	linux_bbbp("ppc64_cpu - snooze",
-		   "/usr/sbin/ppc64_cpu --smt-snooze-delay 2>/dev/null",
-		   WARNING);
+		   "/usr/sbin/ppc64_cpu --smt-snooze-delay 2>/dev/null", WARNING);
 	linux_bbbp("ppc64_cpu - run-mode",
 		   "/usr/sbin/ppc64_cpu --run-mode 2>/dev/null", WARNING);
 	linux_bbbp("ppc64_cpu - frequency",
@@ -5012,10 +5052,8 @@ int main(int argc, char **argv)
 	linux_bbbp("bootlist -m nmonal -o",
 		   "/usr/sbin/bootlist -m normal -o 2>/dev/null", WARNING);
 	linux_bbbp("lsslot", "/usr/sbin/lsslot      2>/dev/null", WARNING);
-	linux_bbbp("lparstat -i", "/usr/sbin/lparstat -i 2>/dev/null",
-		   WARNING);
-	linux_bbbp("lsdevinfo", "/usr/sbin/lsdevinfo 2>/dev/null",
-		   WARNING);
+	linux_bbbp("lparstat -i", "/usr/sbin/lparstat -i 2>/dev/null", WARNING);
+	linux_bbbp("lsdevinfo", "/usr/sbin/lsdevinfo 2>/dev/null", WARNING);
 	linux_bbbp("ls-vdev", "/usr/sbin/ls-vdev  2>/dev/null", WARNING);
 	linux_bbbp("ls-veth", "/usr/sbin/ls-veth  2>/dev/null", WARNING);
 	linux_bbbp("ls-vscsi", "/usr/sbin/ls-vscsi 2>/dev/null", WARNING);
@@ -5281,18 +5319,12 @@ mvwprintw(padwelcome,x+8, 3, "------------------------------");
 		COLOUR wattrset(padwelcome, COLOR_PAIR(0));
 		mvwprintw(padwelcome, x + 14, 3,
 			  "Use these keys to toggle statistics on/off:");
-		mvwprintw(padwelcome, x + 15, 3,
-			  "  c = CPU         l = CPU Long-term     - = Faster screen updates");
-		mvwprintw(padwelcome, x + 16, 3,
-			  "  m = Memory      V = Virtual memory    + = Slower screen updates");
-		mvwprintw(padwelcome, x + 17, 3,
-			  "  d = Disks       n = Network           j = File Systems");
-		mvwprintw(padwelcome, x + 18, 3,
-			  "  r = Resource    N = NFS               . = only busy disks/procs");
-		mvwprintw(padwelcome, x + 19, 3,
-			  "  k = Kernel      t = Top-processes     h = more options");
-		mvwprintw(padwelcome, x + 20, 3,
-			  "                                        q = Quit");
+		mvwprintw(padwelcome, x + 15, 3, "  c = CPU         l = CPU Long-term     - = Faster screen updates");
+		mvwprintw(padwelcome, x + 16, 3, "  C = \" WideView  U = Utilisation       + = Slower screen updates");
+		mvwprintw(padwelcome, x + 17, 3, "  m = Memory      V = Virtual memory    j = File Systems");
+		mvwprintw(padwelcome, x + 18, 3, "  d = Disks       n = Network           . = only busy disks/procs");
+		mvwprintw(padwelcome, x + 19, 3, "  r = Resource    N = NFS               h = more options");
+		mvwprintw(padwelcome, x + 20, 3, "  k = Kernel      t = Top-processes     q = Quit");
 		pnoutrefresh(padwelcome, 0, 0, x, 1, LINES - 2, COLS - 2);
 		wnoutrefresh(stdscr);
 		x = x + 22;
@@ -5366,7 +5398,7 @@ mvwprintw(padwelcome,x+8, 3, "------------------------------");
 /*			mvwprintw(padhelp,18, 1, "v = Verbose Simple Checks - OK/Warnings/Danger"); */
 
 	    mvwprintw(padhelp, 19, 1,
-		      "Developer: Nigel Griffiths            | See http://nmon.sourceforge.net");
+		"(C) Copyright 2009 Nigel Griffiths    | See http://nmon.sourceforge.net");
 	    mvwprintw(padhelp, 20, 1, "Colour:");
 	    for (i = 0; i < 13; i++) {
 		COLOUR wattrset(padhelp, COLOR_PAIR(i));
@@ -5485,8 +5517,8 @@ mvwprintw(padwelcome,x+8, 3, "------------------------------");
 	    proc_cpu();
 	    cpu_user = RAWTOTAL(user) + RAWTOTAL(nice);
 	    cpu_sys =
-		RAWTOTAL(sys) + RAWTOTAL(irq) + RAWTOTAL(softirq) +
-		RAWTOTAL(guest) + RAWTOTAL(guest_nice);
+		RAWTOTAL(sys) + RAWTOTAL(irq) + RAWTOTAL(softirq) ;
+		/* + RAWTOTAL(guest) + RAWTOTAL(guest_nice); these are in addition to the 100% */
 	    cpu_wait = RAWTOTAL(wait);
 	    cpu_idle = RAWTOTAL(idle);
 	    cpu_steal = RAWTOTAL(steal);
@@ -5599,8 +5631,8 @@ mvwprintw(padwelcome,x+8, 3, "------------------------------");
 		for (i = 0; i < cpus; i++) {
 		    cpu_user = RAW(user) + RAW(nice);
 		    cpu_sys =
-			RAW(sys) + RAW(irq) + RAW(softirq) + RAW(guest) +
-			RAW(guest_nice);
+			RAW(sys) + RAW(irq) + RAW(softirq); 
+			/* + RAW(guest) + RAW(guest_nice); these are in addition to the 100% */
 		    cpu_wait = RAW(wait);
 		    cpu_idle = RAW(idle);
 		    cpu_steal = RAW(steal);
@@ -5700,8 +5732,8 @@ mvwprintw(padwelcome,x+8, 3, "------------------------------");
 #endif
 		cpu_user = RAWTOTAL(user) + RAWTOTAL(nice);
 		cpu_sys =
-		    RAWTOTAL(sys) + RAWTOTAL(irq) + RAWTOTAL(softirq) +
-		    RAWTOTAL(guest) + RAWTOTAL(guest_nice);
+		    RAWTOTAL(sys) + RAWTOTAL(irq) + RAWTOTAL(softirq);
+		    /* + RAWTOTAL(guest) + RAWTOTAL(guest_nice); these are in addition to the 100% */
 		cpu_wait = RAWTOTAL(wait);
 		cpu_idle = RAWTOTAL(idle);
 		cpu_steal = RAWTOTAL(steal);
@@ -5787,8 +5819,8 @@ mvwprintw(padwelcome,x+8, 3, "------------------------------");
 			for (i = 0; i < cpus && i < 64; i++) {
 			    cpu_user = RAW(user) + RAW(nice);
 			    cpu_sys =
-				RAW(sys) + RAW(irq) + RAW(softirq) +
-				RAW(guest) + RAW(guest_nice);
+				RAW(sys) + RAW(irq) + RAW(softirq);
+				/* + RAW(guest) + RAW(guest_nice); these are in addition to the 100% */
 			    cpu_sum = cpu_user + cpu_sys;
 			    COLOUR wattrset(padwide, COLOR_PAIR(4));	/* blue */
 			    if (i % 2) {
@@ -5837,8 +5869,8 @@ mvwprintw(padwelcome,x+8, 3, "------------------------------");
 			    for (i = 64; i < cpus && i < 128; i++) {
 				cpu_user = RAW(user) + RAW(nice);
 				cpu_sys =
-				    RAW(sys) + RAW(irq) + RAW(softirq) +
-				    RAW(guest) + RAW(guest_nice);
+				    RAW(sys) + RAW(irq) + RAW(softirq);
+				    /* + RAW(guest) + RAW(guest_nice); these are in addition to the 100% */
 				cpu_sum = cpu_user + cpu_sys;
 				COLOUR wattrset(padwide, COLOR_PAIR(4));	/* blue */
 				if (i % 2) {
@@ -5895,8 +5927,8 @@ mvwprintw(padwelcome,x+8, 3, "------------------------------");
 			    for (i = 128; i < cpus && i < 196; i++) {
 				cpu_user = RAW(user) + RAW(nice);
 				cpu_sys =
-				    RAW(sys) + RAW(irq) + RAW(softirq) +
-				    RAW(guest) + RAW(guest_nice);
+				    RAW(sys) + RAW(irq) + RAW(softirq);
+				    /* + RAW(guest) + RAW(guest_nice); these are in addition of the 100% */
 				cpu_sum = cpu_user + cpu_sys;
 				COLOUR wattrset(padwide, COLOR_PAIR(4));	/* blue */
 				if (i % 2) {
@@ -5942,8 +5974,8 @@ mvwprintw(padwelcome,x+8, 3, "------------------------------");
 		if (show_verbose && cursed) {
 		    cpu_user = RAWTOTAL(user) + RAWTOTAL(nice);
 		    cpu_sys =
-			RAWTOTAL(sys) + RAWTOTAL(irq) + RAWTOTAL(softirq) +
-			RAWTOTAL(guest) + RAWTOTAL(guest_nice);
+			RAWTOTAL(sys) + RAWTOTAL(irq) + RAWTOTAL(softirq);
+			/* + RAWTOTAL(guest) + RAWTOTAL(guest_nice); these are in addition to the 100% */
 		    cpu_wait = RAWTOTAL(wait);
 		    cpu_idle = RAWTOTAL(idle) + RAWTOTAL(steal);
 		    cpu_sum = cpu_idle + cpu_user + cpu_sys + cpu_wait;
@@ -6937,8 +6969,8 @@ mvwprintw(padwelcome,x+8, 3, "------------------------------");
 		else
 		    mvwprintw(padker, 5, BOOTCOL, "Uptime has overflowed");
 		mvwprintw(padker, 7, BOOTCOL, "%d CPU core threads", cpus);
-		mvwprintw(padker, 9, BOOTCOL, "%8lld Bootime",
-			  p->cpu_total.btime);
+		mvwprintw(padker, 9, BOOTCOL, "Boot time %d", boottime);
+		mvwprintw(padker,10, BOOTCOL, "%s", boottime_str);
 		COLOUR wattrset(padker, COLOR_PAIR(0));
 		DISPLAY(padker, 11);
 	    } else {
@@ -7892,7 +7924,6 @@ I/F Name Recv=KB/s Trans=KB/s packin packout insize outsize Peak->Recv Trans
 		if (dgroup_loaded != 2 || dgroup_total_disks == 0) {
 		    mvwprintw(paddg, 1, 1,
 			      "No Disk Groups found use -g groupfile when starting nmon");
-		    n = 0;
 		} else if (disk_first_time) {
 		    disk_first_time = 0;
 		    mvwprintw(paddg, 1, 1,
@@ -8207,34 +8238,33 @@ I/F Name Recv=KB/s Trans=KB/s packin packout insize outsize Peak->Recv Trans
 	    wclrtobot(padtop);
 	    /* Get the details of the running processes */
 	    skipped = 0;
-	    n = getprocs(0);
-	    if (n > p->nprocs) {
-		n = n + 128;	/* allow for growth in the number of processes in the mean time */
-		p->procs = REALLOC(p->procs, sizeof(struct procsinfo) * (n + 1));	/* add one to avoid overrun */
-		p->nprocs = n;
+	    current_procs = getprocs(0);
+	    if (current_procs > p->proc_records) {
+		adjusted_procs = current_procs + 128;	/* allow for growth in the number of processes in the mean time */
+		p->procs = REALLOC(p->procs, sizeof(struct procsinfo) * adjusted_procs);
+		p->proc_records = adjusted_procs;
 	    }
 
-	    n = getprocs(1);
+    	    p->processes = getprocs(p->proc_records); 
 
-	    if (topper_size < n) {
-		topper = REALLOC(topper, sizeof(struct topper) * (n + 1));	/* add one to avoid overrun */
-		topper_size = n;
+	    if (topper_size < p->processes) {
+		topper = REALLOC(topper, sizeof(struct topper) * (p->processes +1));/* add one to avoid overrun */
+		topper_size = p->processes;
 	    }
 	    /* Sort the processes by CPU utilisation */
-	    for (i = 0, max_sorted = 0; i < n; i++) {
+	    for (i = 0, max_sorted = 0; i < p->processes; i++) {
 		/* move forward in the previous array to find a match */
-		for (j = 0; j < q->nprocs; j++) {
+		for (j = 0; j < q->processes; j++) {
 		    if (p->procs[i].pi_pid == q->procs[j].pi_pid) {	/* found a match */
 			topper[max_sorted].index = i;
 			topper[max_sorted].other = j;
 			topper[max_sorted].time =
-			    TIMEDELTA(pi_utime, i, j) + TIMEDELTA(pi_stime,
-								  i, j);
+			    TIMEDELTA(pi_utime, i, j) + TIMEDELTA(pi_stime, i, j);
 			topper[max_sorted].size =
 			    p->procs[i].statm_resident;
-			if (isroot)
+			if (isroot && cursed) /* we don't sort on this in data capture */
 			    topper[max_sorted].io =
-				COUNTDELTA(read_io) + COUNTDELTA(write_io);
+				IODELTA(read_io, i, j) + IODELTA(write_io, i, j);
 
 			max_sorted++;
 			break;
@@ -8390,17 +8420,9 @@ I/F Name Recv=KB/s Trans=KB/s packin packout insize outsize Peak->Recv Trans
 					  p->procs[i].statm_lrs * pagesize / 1024UL,	/* in KB */
 					  p->procs[i].statm_share * pagesize / 1024UL,	/* in KB */
 					  show_topmode ==
-					  5 ? (int) (COUNTDELTA(read_io) /
-						     elapsed /
-						     1024)
-					  : (int) (COUNTDELTA(pi_minflt) /
-						   elapsed),
+					  5 ? (int) (COUNTDELTA(read_io) / elapsed / 1024) : (int) (COUNTDELTA(pi_minflt) / elapsed),
 					  show_topmode ==
-					  5 ? (int) (COUNTDELTA(write_io) /
-						     elapsed /
-						     1024)
-					  : (int) (COUNTDELTA(pi_majflt) /
-						   elapsed),
+					  5 ? (int) (COUNTDELTA(write_io) / elapsed / 1024) : (int) (COUNTDELTA(pi_majflt) / elapsed),
 					  p->procs[i].pi_comm);
 			    }
 			} else {
@@ -8418,36 +8440,21 @@ I/F Name Recv=KB/s Trans=KB/s packin packout insize outsize Peak->Recv Trans
 					/* 1 */ p->procs[i].pi_pid,
 					/* 2 */ LOOP,
 					/* 3 */ topper[j].time / elapsed,
-					/* 4 */ TIMEDELTA(pi_utime, i,
-							  topper[j].
-							  other) / elapsed,
-					/* 5 */ TIMEDELTA(pi_stime, i,
-							  topper[j].
-							  other) / elapsed,
-												/* 6 */ p->procs[i].statm_size * pagesize / 1024UL,
-												/* in KB */
-												/* 7 */ p->procs[i].statm_resident * pagesize / 1024UL,
-												/* in KB */
-												/* 8 */ p->procs[i].statm_trs * pagesize / 1024UL,
-												/* in KB */
-												/* 9 */ p->procs[i].statm_drs * pagesize / 1024UL,
-												/* in KB */
-												/* 10 */ p->procs[i].statm_share * pagesize / 1024UL,
-												/* in KB */
-					/* 11 */ 
-					(int) (COUNTDELTA(pi_minflt) /
-					       elapsed),
-					/* 12 */ 
-					(int) (COUNTDELTA(pi_majflt) /
-					       elapsed),
+					/* 4 */ TIMEDELTA(pi_utime, i, topper[j].  other) / elapsed,
+					/* 5 */ TIMEDELTA(pi_stime, i, topper[j].  other) / elapsed,
+					/* 6 */ p->procs[i].statm_size * pagesize / 1024UL, /* in KB */
+					/* 7 */ p->procs[i].statm_resident * pagesize / 1024UL, /* in KB */
+					/* 8 */ p->procs[i].statm_trs * pagesize / 1024UL, /* in KB */
+					/* 9 */ p->procs[i].statm_drs * pagesize / 1024UL, /* in KB */
+					/* 10 */ p->procs[i].statm_share * pagesize / 1024UL, /* in KB */
+					/* 11 */ (int) (COUNTDELTA(pi_minflt) / elapsed),
+					/* 12 */ (int) (COUNTDELTA(pi_majflt) / elapsed),
 					/* 13 */ p->procs[i].pi_comm
 #ifndef KERNEL_2_6_18
 				    );
 #else
 					,
-					p->procs[i].pi_num_threads,
-					COUNTDELTA
-					(pi_delayacct_blkio_ticks)
+					p->procs[i].pi_num_threads, COUNTDELTA(pi_delayacct_blkio_ticks)
 				    );
 #endif
 
