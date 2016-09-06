@@ -3,7 +3,7 @@ CFLAGS=-g -O3 -Wall -D JFS -D GETUSER -D LARGEMEM
 # CFLAGS=-g -O2 -D JFS -D GETUSER -Wall -D POWER
 #CFLAGS=-g -D JFS -D GETUSER 
 LDFLAGS=-lncurses -lm -g
-FILE=lmon16d.c
+FILE=lmon16f.c
 
 #### POWER 
 #### POWER Red Hat Enterprise Linux - RHEL
