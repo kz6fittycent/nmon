@@ -1,0 +1,23 @@
+name: nmon # check to see if it's available
+version: '0.1+git' #
+summary: A snap for nmon # 79 char long summary
+description: |
+  Nmon is "... systems administrator, tuner, benchmark tool gives you a huge amount of important performance information in one go.".
+grade: stable # must be 'stable' to release into candidate/stable channels
+confinement: strict # use 'strict' once you have the right plugs
+
+apps:
+  nmon:
+    command: nmon
+    plugs:
+      - home
+      - network
+      - network-bind
+      - hardware-random-observe
+     
+parts: 
+  my-part:
+    source: https://github.com/kz6fittycent/nmon
+    source-type: git
+    plugin: make
+  
