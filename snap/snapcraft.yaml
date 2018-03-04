@@ -1,4 +1,4 @@
-name: nmon # check to see if it's available
+name: nmon-kz6fittycent # check to see if it's available
 version: '0.1+git' #
 summary: A snap for nmon # 79 char long summary
 description: |
@@ -20,4 +20,9 @@ parts:
     source: https://github.com/kz6fittycent/nmon
     source-type: git
     plugin: make
+    build-packages:
+      - libncurses5
+      
+    stage-packages:
+      - libncurses5
   
